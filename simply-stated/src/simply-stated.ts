@@ -62,7 +62,7 @@ type StateCreator<
   stateName: StateName;
 };
 
-type AnyStateCreator = StateCreator<string, any>;
+export type AnyStateCreator = StateCreator<string, any>;
 
 type StateCreatorsFromDefinitions<
   Definitions extends readonly AnyStateDefinition[],
@@ -98,16 +98,31 @@ type ValidateNoStar<StateNames extends readonly string[]> = {
     : StateNames[SN];
 };
 
+export type PlainStateFromNative<State extends AnyNativeState> =
+  State extends unknown ? Omit<State, 'is'> : never;
+
+export const toNativeState = <
+  PlainState extends PlainStateFromNative<AnyNativeState>,
+>(
+  state: PlainState,
+) => ({
+  ...state,
+  is: (...stateCreators: AnyStateCreator[]) =>
+    stateCreators.some(sc => sc.stateName === state.name),
+});
+
+export const toPlainState = <State extends AnyNativeState>(state: State) => {
+  const { is: _is, ...plainState } = state;
+  return plainState as PlainStateFromNative<State>;
+};
+
 const makeStateCreator = <Data extends NonNullable<unknown> | void>({
   stateName,
   withData,
 }: StateDefinition<string, Data>) => {
-  const is = (...stateCreators: AnyStateCreator[]) =>
-    stateCreators.some(sc => sc.stateName === stateName);
-
   const stateCreator = withData
-    ? (data: Data) => ({ name: stateName, data, is })
-    : () => ({ name: stateName, is });
+    ? (data: Data) => toNativeState({ name: stateName, data })
+    : () => toNativeState({ name: stateName });
 
   return Object.assign(stateCreator, {
     stateName,
@@ -138,9 +153,8 @@ export const defineState = <const StateNames extends readonly string[]>(
   return tuple;
 };
 
-type StateType<StateCreators extends readonly AnyStateCreator[]> = ReturnType<
-  StateCreators[number]
->;
+export type StateType<StateCreators extends readonly AnyStateCreator[]> =
+  ReturnType<StateCreators[number]>;
 
 type StateCreatorsMap<StateCreators extends readonly AnyStateCreator[]> =
   Simplify<{
@@ -320,11 +334,13 @@ type ValidateCombine<
 export type StateOf<
   MapOfStateCreators extends StateCreatorsMap<readonly AnyStateCreator[]>,
   StateName extends keyof MapOfStateCreators = keyof MapOfStateCreators,
-> = {
-  [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
-    ? ReturnType<MapOfStateCreators[SN]>
-    : never;
-}[StateName];
+> = Simplify<
+  {
+    [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
+      ? ReturnType<MapOfStateCreators[SN]>
+      : never;
+  }[StateName]
+>;
 
 export type EventOf<
   MapOfEventCreators extends Record<string, (...args: any) => { type: string }>,
@@ -420,4 +436,12 @@ export const combineStates = <
   };
 
   return { state: stateCreatorsMap, createMachine };
+};
+
+export type AnyNativeState = ReturnType<StateCreator<string, any>>;
+
+export type AnyMachine = {
+  event: Record<string, (...args: any) => { type: string }>;
+  state: Record<string, AnyStateCreator>;
+  transition: (state: any, event: any) => AnyNativeState;
 };
