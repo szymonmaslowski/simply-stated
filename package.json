@@ -10,7 +10,7 @@
     "test": "run-s test:*",
     "test:runtime": "vitest run",
     "test:types": "tstyche",
-    "typecheck": "tsc -p simply-stated/tsconfig.json --noEmit",
+    "typecheck": "tsc -p simply-stated/tsconfig.json --noEmit && tsc -p examples/tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
