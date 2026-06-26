@@ -1,0 +1,117 @@
+name: Release
+
+# Manually cut a release. Actions -> Release -> Run workflow -> enter a version
+# (e.g. 1.2.3). The job validates it, gates on build + tests, bumps the package
+# version, commits + tags + pushes to main, creates a GitHub Release, and
+# publishes to npm — in one run.
+#
+# Tick "dry run" to exercise it safely: everything runs except the push, the
+# real npm publish, and the GitHub Release (a `npm publish --dry-run` is done
+# instead so you can inspect the tarball).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (semver, e.g. 1.2.3)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run (skip push, publish and GitHub Release)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]] \
+            || { echo "::error::'$VERSION' is not a valid semver (e.g. 1.2.3)"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Ensure tag is free
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::tag v$VERSION already exists"; exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+      - run: pnpm test
+
+      - name: Bump version
+        working-directory: simply-stated
+        env:
+          VERSION: ${{ inputs.version }}
+        run: npm version "$VERSION" --no-git-tag-version
+
+      - name: Commit & tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Committer is attribution only — push permission comes from the token.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am "chore(release): v$VERSION" --no-verify
+          git tag "v$VERSION"
+
+      - name: Push
+        if: ${{ !inputs.dry_run }}
+        run: git push origin main --follow-tags
+
+      - name: Publish to npm (dry run)
+        if: ${{ inputs.dry_run }}
+        working-directory: simply-stated
+        run: npm publish --dry-run
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        working-directory: simply-stated
+        run: |
+          npm install -g npm@latest # OIDC trusted publishing needs npm >= 11.5
+          npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          {
+            echo "### Dry run for v$VERSION"
+            echo "Validated, built, tested, bumped, committed and tagged locally."
+            echo "Skipped: push to main, npm publish, GitHub Release."
+          } >> "$GITHUB_STEP_SUMMARY"

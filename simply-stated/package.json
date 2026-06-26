@@ -1,7 +1,28 @@
 {
   "name": "simply-stated",
   "version": "0.1.0",
-  "description": "State description library",
+  "description": "Strongly typed, declarative state machine modeling",
+  "keywords": [
+    "state-machine",
+    "fsm",
+    "state",
+    "statechart",
+    "typescript",
+    "type-safe",
+    "redux",
+    "redux-toolkit"
+  ],
+  "license": "MIT",
+  "author": "Szymon Masłowski",
+  "homepage": "https://github.com/szymonmaslowski/simply-stated#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/szymonmaslowski/simply-stated.git",
+    "directory": "simply-stated"
+  },
+  "bugs": {
+    "url": "https://github.com/szymonmaslowski/simply-stated/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -21,7 +42,6 @@
   "files": [
     "dist"
   ],
-  "author": "Szymon Masłowski",
   "peerDependencies": {
     "@reduxjs/toolkit": "^2.0.0"
   },
