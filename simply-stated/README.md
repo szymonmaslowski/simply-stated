@@ -12,6 +12,8 @@ npm install simply-stated
 
 ## Quick look
 
+First you describe the state.
+
 ```typescript
 import { combineStates, defineState } from 'simply-stated';
 import type { EventOf, StateOf } from 'simply-stated';
@@ -50,7 +52,12 @@ const workerMachine = combineStates(
     failForced: (reason: string) => state.Failed({ reason }),
   },
 }));
+```
 
+Next, you process it with your state-management library of choice using
+available [adapter](#adapters) or do it manually, like below.
+
+```typescript
 const { state } = workerMachine;
 
 type MachineState = StateOf<typeof state>;
@@ -81,14 +88,14 @@ if (currentState.is(state.Queued, state.Processing)) {
 
 Plug a machine into your state manager:
 
-- **Redux Toolkit** — `simply-stated/redux-toolkit` (slice + collection
+- **Redux Toolkit** — `simply-stated/redux-toolkit` (single instance / collection
   adapters). See the
-  [adapter docs](https://github.com/szymonmaslowski/simply-stated/blob/main/simply-stated/src/adapters/redux-toolkit/README.md).
+  [docs](https://github.com/szymonmaslowski/simply-stated/blob/main/simply-stated/src/adapters/redux-toolkit/README.md).
 - **Zustand** — _(coming soon)_
 
 ## Documentation
 
-Full API walkthrough and runnable examples:
+Full API walkthrough:
 [github.com/szymonmaslowski/simply-stated](https://github.com/szymonmaslowski/simply-stated#readme).
 
 ## License

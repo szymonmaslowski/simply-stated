@@ -148,12 +148,15 @@ const workerMachine = combineStates(/* ... */).createMachine(state => ({
 
 ### Step 3. Process the state
 
-It depends on your application design and the way it manages the state.
+This step depends on your application design and the way it manages the state.
 
-Backend system might store events and use the machine to validate and derive the current object state.
-Frontend applications usually store the current state with state management libraries (redux, zustand etc.).
+- Backend system might process events and use the state machine to validate and
+  derive the current object state.
+- Frontend applications usually store the current state with state management
+  libraries (redux, zustand etc.). See the [adapters & examples](#adapters--examples).
 
-The app calls the `transition` function passing the **base state** and the **event** to compute the **resulting state**.
+Either way, the app calls the `transition` function passing the **base state**
+and the **event** to compute the **resulting state**.
 
 <details open>
 <summary>With comments</summary>
@@ -239,10 +242,38 @@ if (currentState.is(state.Queued, state.Processing)) {
 
 ## Adapters & examples
 
-Describe your state once, then plug it into your state manager with Simply
-Stated adapters. See examples in [`examples/`](examples).
+Describe your state, then plug it into your state manager with available
+adapters. See examples in [examples/](examples).
 
 - **Redux Toolkit** — slice & collection adapters (`simply-stated/redux-toolkit`)
   · [docs](simply-stated/src/adapters/redux-toolkit/README.md) ·
   [examples](examples/redux-toolkit/README.md)
 - **Zustand** — _(coming soon)_
+
+## Native vs plain state
+
+There are two types of state:
+
+- **Native state** — what `state.*` creators return and the machine operates on.
+  It has one downside: **it is not serialisable**.
+- **Plain state** — serialisable version, but lacking some methods from
+  the native state.
+
+Therefore, there are `toNativeState` and `toPlainState` helpers available
+for converting between the two.
+
+```typescript
+import { toNativeState, toPlainState } from 'simply-stated';
+
+const { state } = workerMachine;
+
+let native = state.Idle();
+native.is(state.Queued);
+
+const plain = toPlainState(native);
+JSON.stringify(plain); // safe
+
+native = toNativeState(plain);
+```
+
+Adapters for state managers utilise those helpers to achieve serialisability.
