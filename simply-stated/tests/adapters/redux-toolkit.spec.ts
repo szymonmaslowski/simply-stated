@@ -77,7 +77,7 @@ describe('toSliceOptions', () => {
       });
     });
 
-    it('stores plain, serializable state (no is method)', () => {
+    it('stores plain, serialisable state (no is method)', () => {
       const { slice, store } = setupFlat();
       store.dispatch(slice.actions.fetch());
       store.dispatch(slice.actions.resolved('x'));

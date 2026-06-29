@@ -74,7 +74,7 @@ const setupNested = () => {
 
 describe('toCollectionSliceOptions', () => {
   describe('explicit id', () => {
-    it('addEntity stores a plain (serializable) entity keyed by entityId', () => {
+    it('addEntity stores a plain (serialisable) entity keyed by entityId', () => {
       const { machine, slice, store } = setupExplicit();
       store.dispatch(
         slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),

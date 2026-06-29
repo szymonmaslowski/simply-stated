@@ -185,6 +185,8 @@ logFetchData(fetch2);
 
 store.dispatch(
   complexCollectionSlice.actions.addJobEntity({
+    // Thanks to the selectIdFromData option there is no need
+    // to provide the entityId property for adding Job entity
     state: jobMachine.state.Queued({ id: 'j1', percentage: 0 }),
   }),
 );

@@ -1,74 +1,53 @@
 # Redux Toolkit examples
 
-Worked, runnable scenarios for the Redux Toolkit adapters. For the API and how
-the adapters behave (the slice & collection adapters, plain/native storage, id
-modes, `nestingPath`, …), see the adapter docs:
-[`simply-stated/src/adapters/redux-toolkit`](../../simply-stated/src/adapters/redux-toolkit/README.md).
+Below examples use a few example machines (`fetchMachine`, `toggleMachine`, `jobMachine`)
+defined in [../example-machines.ts](../example-machines.ts).
 
-## Running
+## Examples
 
-Examples import the **built** library, so build it once first:
+### `toSliceOptions(machine, options)` - single machine state
 
-```bash
-pnpm install            # from the repo root
-pnpm build              # emit simply-stated/dist
+- [basic.ts](./basic.ts) - **one machine, one instance and one slice**.
 
-pnpm example:redux-toolkit:basic
-pnpm example:redux-toolkit:complex
-pnpm example:redux-toolkit:basic-collection
-pnpm example:redux-toolkit:complex-collection
-```
+  The simplest case, a single `fetchMachine` machine mapped to a slice.
+  - Machine state becomes the slice state
+  - Each machine event becomes redux action.
+  - A built-in `selectNativeState` selector returns the current **native** state.
+  - A required `initialState` option.
 
-The machines used (`fetchMachine`, `toggleMachine`, `jobMachine`) are defined in
-[`../example-machines.ts`](../example-machines.ts).
+- [complex.ts](./complex.ts) — **composing several machines into one slice**.
 
-## The examples
+  Two machines plus extra plain state, merged into a single `complex` slice.
+  - Each machine specifies its "mounting point" via the `nestingPath` property.
+  - The fetch machine case defines a custom `selectError` selector that reads
+    the (native) fetch state.
 
-### `basic.ts` — one machine, one instance
+  Some level of manual wiring is required here: assembling all slice state parts,
+  renaming selectors to avoid naming clash (default `selectNativeState` selector
+  created for both machines).
 
-The simplest case. A single `fetchMachine` slice, no nesting.
+### `toCollectionSliceOptions(machine)` - a collection of machine states.
 
-- Each event (`fetch`, `resolved`, `retry`, `refetch`, `rejected`) is an action.
-- The built-in `selectNativeState` selector returns the current native state.
+- [basic-collection.ts](./basic-collection.ts) - **a collection of one machine states**.
 
-### `complex.ts` — composing several slices into one
+  A collection of `fetchMachine` states. This one requires to distinguish the
+  state targeted via an action/selector.
+  - Each action derived from a machine event, carries a payload with an `entityId`
+    property for identification purposes.
+  - Those that carried a payload define a nested payload property:
+    `{ entityId: EntityId, payload: EventPayload }`.
+  - A set of default lifecycle actions also carry the `entityId` property
+    (`addEntity({ entityId, state })` and `removeEntity({ entityId })`)
+  - Five default entity adapter selectors, all patched to expose the **native** state
+    (`selectIds`, `selectTotal`, `selectAllNative`, `selectNativeEntities` and
+    `selectNativeById`).
 
-Two machines plus extra plain state, merged into a single `complex` slice.
+- [complex-collection.ts](./complex-collection.ts) - **several collections in one slice**
 
-- `fetchMachine` is mounted at `machines.fetch`, `toggleMachine` at
-  `machines.toggle` (via `nestingPath`), and a plain `counter` lives alongside.
-- Reducers are merged by spreading each adapter's `reducers` plus a hand-written
-  `countUp`. **Assumption:** action/selector names across the merged adapters
-  must not collide — `omit` is used to drop/rename the shared `selectNativeState`
-  before re-exposing it as `selectFetchState` / `selectToggleState`.
-- A custom `selectError` selector reads the (native) fetch state.
-
-### `basic-collection.ts` — a collection of one machine type
-
-Many `fetchMachine` instances keyed by id, via the collection adapter.
-
-- **Explicit-id mode** (no `selectIdFromData`): the caller supplies the id, and
-  it is stored as a separate `entityId` property on the entity.
-- Default actions: per-event actions take `{ entityId }` (or
-  `{ entityId, payload }`); lifecycle `addEntity({ entityId, state })` and
-  `removeEntity({ entityId })`.
-- Five default selectors, all patched to native: `selectIds`, `selectTotal`,
-  `selectAllNative`, `selectNativeEntities` (id→native map), `selectNativeById`.
-- The bare RTK `entityAdapter` is also returned for manual use.
-
-### `complex-collection.ts` — several collections merged
-
-A `complex-collection` slice combining a fetch collection, a job collection, and
-a plain (non-machine) RTK counter adapter.
-
-- **Data-id mode** for jobs: `selectIdFromData: data => data.id` derives the id
-  from the state's `data`. **Assumption:** every state of that machine must carry
-  the id in its data. In return, no redundant `entityId` property is stored.
-- `sortComparer` orders job entities by a native state ranking.
-- **Assumption:** merging collections means default reducer names
-  (`addEntity` / `removeEntity`) clash — they are `omit`-ted and re-exposed under
-  unique names (`addFetchEntity` / `removeFetchEntity`, `addJobEntity` /
-  `removeJobEntity`). `addFetchEntity` also shows manual integration via
-  `entityAdapter.addOne` + `toPlainState`.
-- Selectors are hand-picked (the adapter exposes the full default set) and mixed
-  with selectors over the plain counter adapter.
+  Similarly to the [complex.ts](./complex.ts) example, we are merging a few
+  machine state collections into a single slice.
+  - Specifying "mounting points" via the `nestingPath` property.
+  - The job case provides the `selectIdFromData` option that point out the
+    entity id from the state's data. With it, no redundant `entityId` property is stored.
+  - The `sortComparer` option (the same as RTK's entity adapter one) orders job
+    entities by a **native** state ranking.
