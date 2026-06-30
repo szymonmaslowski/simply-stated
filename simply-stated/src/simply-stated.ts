@@ -10,7 +10,7 @@ import type {
   UnionToIntersection,
 } from 'type-fest';
 
-type ApiError<M extends string> = {
+export type ApiError<M extends string> = {
   __message: M;
 };
 

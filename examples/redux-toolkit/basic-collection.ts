@@ -20,10 +20,10 @@ const makeBasicCollectionSlice = () => {
   // the native machine state as the state managed by the entity adapter is plain.
   const {
     selectAllNative,
-    selectNativeEntities,
+    selectNativeEntitiesMap,
     selectNativeById,
     selectIds,
-    selectTotal,
+    selectTotalCount,
   } = basicCollectionSlice.selectors;
 
   // @ts-expect-error properties not used

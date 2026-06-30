@@ -2,9 +2,14 @@ import type { PayloadAction, SliceSelectors } from '@reduxjs/toolkit';
 import type { Simplify } from 'type-fest';
 import type {
   AnyMachine,
+  ApiError,
   StateOf,
   PlainStateFromNative,
 } from '../../simply-stated';
+
+export type ReservedSelectors<Names extends string> = {
+  [K in Names]?: ApiError<`'${K}' is a reserved selector name`>;
+};
 
 export type NativeStateOfMachine<Machine extends AnyMachine> = StateOf<
   Machine['state']

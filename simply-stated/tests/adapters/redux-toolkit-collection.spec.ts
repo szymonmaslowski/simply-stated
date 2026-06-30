@@ -79,7 +79,7 @@ describe('toCollectionSliceOptions', () => {
       store.dispatch(
         slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),
       );
-      expect(slice.selectors.selectTotal(store.getState())).toBe(1);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(1);
       expect(slice.selectors.selectIds(store.getState())).toEqual(['a']);
       const stored = store.getState().fetches.entities['a'];
       expect(stored).toEqual({ entityId: 'a', name: 'Idle' });
@@ -95,7 +95,7 @@ describe('toCollectionSliceOptions', () => {
       store.dispatch(
         slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),
       );
-      expect(slice.selectors.selectTotal(store.getState())).toBe(1);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(1);
       expect(store.getState().fetches.entities['a']).toEqual({
         entityId: 'a',
         name: 'Loading',
@@ -144,10 +144,10 @@ describe('toCollectionSliceOptions', () => {
         slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),
       );
       store.dispatch(slice.actions.removeEntity({ entityId: 'a' }));
-      expect(slice.selectors.selectTotal(store.getState())).toBe(0);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(0);
     });
 
-    it('selectAllNative / selectNativeById / selectNativeEntities hydrate with is', () => {
+    it('selectAllNative / selectNativeById / selectNativeEntitiesMap hydrate with is', () => {
       const { machine, slice, store } = setupExplicit();
       store.dispatch(
         slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),
@@ -162,7 +162,7 @@ describe('toCollectionSliceOptions', () => {
       expect(
         slice.selectors.selectNativeById(store.getState(), 'nope'),
       ).toBeUndefined();
-      const map = slice.selectors.selectNativeEntities(store.getState());
+      const map = slice.selectors.selectNativeEntitiesMap(store.getState());
       expect(Object.keys(map)).toEqual(['a']);
       expect(map['a']!.entityId).toBe('a');
       expect(map['a']!.is(machine.state.Success)).toBe(true);
@@ -197,7 +197,7 @@ describe('toCollectionSliceOptions', () => {
       expect(slice.selectors.countSuccess(store.getState())).toBe(1);
       expect(slice.selectors.nameOf(store.getState(), 'b')).toBe('Idle');
       // built-ins still present
-      expect(slice.selectors.selectTotal(store.getState())).toBe(2);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(2);
     });
 
     it('ignores events invalid for the current state', () => {
@@ -237,17 +237,17 @@ describe('toCollectionSliceOptions', () => {
         }),
       );
       store.dispatch(slice.actions.removeEntity({ entityId: 'j1' }));
-      expect(slice.selectors.selectTotal(store.getState())).toBe(0);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(0);
     });
 
-    it('selectNativeEntities maps derived ids to native states (no entityId prop)', () => {
+    it('selectNativeEntitiesMap maps derived ids to native states (no entityId prop)', () => {
       const { machine, slice, store } = setupData();
       store.dispatch(
         slice.actions.addEntity({
           state: machine.state.Queued({ id: 'j1', n: 0 }),
         }),
       );
-      const map = slice.selectors.selectNativeEntities(store.getState());
+      const map = slice.selectors.selectNativeEntitiesMap(store.getState());
       expect(Object.keys(map)).toEqual(['j1']);
       expect(map['j1']!.is(machine.state.Queued)).toBe(true);
       expect(map['j1']!.data).toEqual({ id: 'j1', n: 0 });
@@ -303,7 +303,7 @@ describe('toCollectionSliceOptions', () => {
         data: { value: 'x' },
       });
       expect(slice.selectors.selectIds(store.getState())).toEqual(['a']);
-      expect(slice.selectors.selectTotal(store.getState())).toBe(1);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(1);
       const byId = slice.selectors.selectNativeById(store.getState(), 'a');
       expect(byId?.is(machine.state.Success)).toBe(true);
     });
@@ -314,7 +314,7 @@ describe('toCollectionSliceOptions', () => {
         slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),
       );
       store.dispatch(slice.actions.removeEntity({ entityId: 'a' }));
-      expect(slice.selectors.selectTotal(store.getState())).toBe(0);
+      expect(slice.selectors.selectTotalCount(store.getState())).toBe(0);
     });
 
     it('ignores events invalid for the current state', () => {

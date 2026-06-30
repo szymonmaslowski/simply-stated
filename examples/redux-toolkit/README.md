@@ -11,16 +11,16 @@ defined in [../example-machines.ts](../example-machines.ts).
 
   The simplest case, a single `fetchMachine` machine mapped to a slice.
   - Machine state becomes the slice state
-  - Each machine event becomes redux action.
-  - A built-in `selectNativeState` selector returns the current **native** state.
-  - A required `initialState` option.
+  - Events mapped 1:1 to actions,
+  - One `selectNativeState` selector available by default
+  - The `initialState` specified via the option.
 
 - [complex.ts](./complex.ts) — **composing several machines into one slice**.
 
   Two machines plus extra plain state, merged into a single `complex` slice.
   - Each machine specifies its "mounting point" via the `nestingPath` property.
-  - The fetch machine case defines a custom `selectError` selector that reads
-    the (native) fetch state.
+  - The fetch machine case defines a custom `selectError` selector that receives
+    the (**native**) fetch state as argument.
 
   Some level of manual wiring is required here: assembling all slice state parts,
   renaming selectors to avoid naming clash (default `selectNativeState` selector
@@ -30,17 +30,9 @@ defined in [../example-machines.ts](../example-machines.ts).
 
 - [basic-collection.ts](./basic-collection.ts) - **a collection of one machine states**.
 
-  A collection of `fetchMachine` states. This one requires to distinguish the
-  state targeted via an action/selector.
-  - Each action derived from a machine event, carries a payload with an `entityId`
-    property for identification purposes.
-  - Those that carried a payload define a nested payload property:
-    `{ entityId: EntityId, payload: EventPayload }`.
-  - A set of default lifecycle actions also carry the `entityId` property
-    (`addEntity({ entityId, state })` and `removeEntity({ entityId })`)
-  - Five default entity adapter selectors, all patched to expose the **native** state
-    (`selectIds`, `selectTotal`, `selectAllNative`, `selectNativeEntities` and
-    `selectNativeById`).
+  This one needs to distinguish the specific fetch state targeted via an
+  action/selector. Therefore, every action carries a payload with an `entityId`
+  property.
 
 - [complex-collection.ts](./complex-collection.ts) - **several collections in one slice**
 

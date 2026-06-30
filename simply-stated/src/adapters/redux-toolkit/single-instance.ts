@@ -10,7 +10,10 @@ import type {
   NativeStateOfMachine,
   NestAt,
   RebindSelectors,
+  ReservedSelectors,
 } from './shared';
+
+type BuiltinSelectorName = 'selectNativeState';
 
 type EventReducers<Machine extends AnyMachine, SliceState> = {
   [K in keyof Machine['event']]: EventReducer<
@@ -23,7 +26,8 @@ export const toSliceOptions = <
   Machine extends AnyMachine,
   NativeState extends NativeStateOfMachine<Machine>,
   NestingPath extends string | undefined = undefined,
-  Selectors extends SliceSelectors<NativeState> = Record<never, never>,
+  Selectors extends SliceSelectors<NativeState> &
+    ReservedSelectors<BuiltinSelectorName> = Record<never, never>,
 >(
   machine: Machine,
   {
