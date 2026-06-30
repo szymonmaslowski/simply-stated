@@ -19,6 +19,7 @@ import type {
   NestAt,
   PlainStateOfMachine,
   RebindSelectors,
+  ReservedSelectors,
 } from './shared';
 
 type DataOfMachine<Machine extends AnyMachine> = [
@@ -91,9 +92,9 @@ type JointReducers<
 
 type BuiltinSelectorName =
   | 'selectIds'
-  | 'selectTotal'
+  | 'selectTotalCount'
   | 'selectAllNative'
-  | 'selectNativeEntities'
+  | 'selectNativeEntitiesMap'
   | 'selectNativeById';
 
 type EntityStateSelectors<
@@ -103,9 +104,9 @@ type EntityStateSelectors<
   Mode,
 > = {
   selectIds: (state: SliceState) => Id[];
-  selectTotal: (state: SliceState) => number;
+  selectTotalCount: (state: SliceState) => number;
   selectAllNative: (state: SliceState) => NativeEntity<Machine, Id, Mode>[];
-  selectNativeEntities: (
+  selectNativeEntitiesMap: (
     state: SliceState,
   ) => Record<Id, NativeEntity<Machine, Id, Mode>>;
   selectNativeById: (
@@ -120,7 +121,7 @@ type CollectionSliceOptions<Machine extends AnyMachine> = {
   selectors?: SliceSelectors<
     Record<RTKEntityId, NativeEntity<Machine, RTKEntityId, 'data' | 'explicit'>>
   > &
-    Partial<Record<BuiltinSelectorName, never>>;
+    ReservedSelectors<BuiltinSelectorName>;
   sortComparer?: Comparer<
     NativeEntity<Machine, RTKEntityId, 'data' | 'explicit'>
   >;
@@ -257,7 +258,7 @@ export const toCollectionSliceOptions = <
 
   const entitySelectors = entityAdapter.getSelectors();
 
-  const selectNativeEntities = (state: SliceState) =>
+  const selectNativeEntitiesMap = (state: SliceState) =>
     Object.fromEntries(
       entitySelectors
         .selectAll(extractEntitiesState(state))
@@ -266,18 +267,18 @@ export const toCollectionSliceOptions = <
 
   const reboundUserSelectors = rebindUserSelectors(
     userSelectors ?? {},
-    selectNativeEntities,
+    selectNativeEntitiesMap,
   );
 
   const builtinSelectors = {
     selectIds: state => entitySelectors.selectIds(extractEntitiesState(state)),
-    selectTotal: state =>
+    selectTotalCount: state =>
       entitySelectors.selectTotal(extractEntitiesState(state)),
     selectAllNative: state =>
       entitySelectors
         .selectAll(extractEntitiesState(state))
         .map(toNativeEntity),
-    selectNativeEntities,
+    selectNativeEntitiesMap,
     selectNativeById: (state, id: EntityId) => {
       const entity = entitySelectors.selectById(
         extractEntitiesState(state),

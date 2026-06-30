@@ -55,3 +55,16 @@ void (() => {
     initialState: { name: 'Nope' },
   });
 });
+
+// A user selector cannot reuse the built-in `selectNativeState` name; the
+// reserved key carries an `ApiError`, so supplying one is rejected.
+void (() => {
+  const machine = makeFetchMachine();
+  toSliceOptions(machine, {
+    initialState: machine.state.Idle(),
+    selectors: {
+      // @ts-expect-error 'selectNativeState' is a reserved selector name
+      selectNativeState: () => 1,
+    },
+  });
+});

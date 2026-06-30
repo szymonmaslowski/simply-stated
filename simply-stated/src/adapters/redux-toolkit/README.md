@@ -51,15 +51,23 @@ import {
     next state.
 
 - **Selectors**
-  - Selectors returning the native state provided out of the box.
+  - Built-in selectors return the native state.
   - Possibility to define custom selectors via the `selectors` option.
-  - Custom selectors receive the native state as the first argument.
+  - Custom selector builders receive the native state as the first argument.
+  - Built-in selector names (see below) are reserved - custom selectors can't
+    use those names
 
 - **`nestingPath` option enables composition.**
   - It mounts a machine's state at a given path inside the slice state
   - Reducers/selectors work against the nested state.
 
-### Collection adapter specifics
+### Single instance adapter (`toSliceOptions`) specifics
+
+- **Built-in selector**
+
+  There is one: `selectNativeState`.
+
+### Collection adapter (`toCollectionSliceOptions`) specifics
 
 - **RTK's entity adapter**
 
@@ -74,7 +82,7 @@ import {
 
 - **Id modes.**
   - By default, each state entity gets an `entityId` appended.
-  - If all the machine's states carry an identifier in a data, you can point
+  - In case all the machine's states carry an identifier in a data, you can point
     it out with the `selectIdFromData` option.
   - Providing `selectIdFromData` removes `entityId` from the entity state and
     the `addEntity` action (`addEntity({ state: NativeState })`);
@@ -85,10 +93,15 @@ import {
   - If particular machine event has a payload, the derived action will have
     that payload nested: `{ entityId, payload }`.
 
-- **Selectors.**
+- **Built-in selector**
 
-  The default RTK's entity adapter selectors are patched to return the native
-  entities and exposed out of the box.
+  There are a bunch of default RTK's entity adapter selectors provided out
+  of the box. Those returning state are patched to return the **native** one.
+  - `selectIds`
+  - `selectTotalCount`
+  - `selectAllNative`
+  - `selectNativeEntitiesMap`
+  - `selectNativeById`
 
 ## See them in action
 

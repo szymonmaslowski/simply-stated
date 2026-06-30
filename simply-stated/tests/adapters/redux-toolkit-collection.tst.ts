@@ -86,14 +86,14 @@ test('per-event actions take { entityId } (and { entityId, payload })', () => {
 
 // --- negative: reserved selector names --------------------------------------
 
-// A user selector cannot reuse a built-in selector name; the reserved keys are
-// typed `never`, so supplying one is rejected.
+// A user selector cannot reuse a built-in selector name; the reserved keys
+// carry an `ApiError`, so supplying one is rejected.
 void (() => {
   const machine = makeFetchMachine();
   toCollectionSliceOptions(machine, {
     selectors: {
-      // @ts-expect-error is not assignable to type 'undefined'
-      selectTotal: () => 1,
+      // @ts-expect-error 'selectTotalCount' is a reserved selector name
+      selectTotalCount: () => 1,
     },
   });
 });

@@ -122,7 +122,8 @@ const makeComplexCollectionSlice = () => {
       // Job selectors
       selectAllJobs: jobCollectionSliceOptions.selectors.selectAllNative,
       selectJobsIds: jobCollectionSliceOptions.selectors.selectIds,
-      selectTotalJobsCount: jobCollectionSliceOptions.selectors.selectTotal,
+      selectTotalJobsCount:
+        jobCollectionSliceOptions.selectors.selectTotalCount,
       selectJobById: ({ machines: { job } }, id: string) => {
         const jobEntity = job.entities[id];
         //
