@@ -1,4 +1,4 @@
-import { createSelector } from '@reduxjs/toolkit';
+import { createDraftSafeSelector } from '@reduxjs/toolkit';
 import type { SliceSelectors } from '@reduxjs/toolkit';
 import type { Simplify } from 'type-fest';
 import { toNativeState, toPlainState } from '../../simply-stated';
@@ -56,7 +56,7 @@ export const toSliceOptions = <
     ]),
   ) as EventReducers<Machine, SliceState>;
 
-  const selectNativeState = createSelector(
+  const selectNativeState = createDraftSafeSelector(
     (state: SliceState) => getAtPath<PlainState>(state, nestingPath),
     state => toNativeState(state) as NativeState,
   );
