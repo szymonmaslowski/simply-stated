@@ -1,5 +1,6 @@
 import {
   type Comparer,
+  createDraftSafeSelector,
   createEntityAdapter,
   type SliceSelectors,
 } from '@reduxjs/toolkit';
@@ -258,12 +259,23 @@ export const toCollectionSliceOptions = <
 
   const entitySelectors = entityAdapter.getSelectors();
 
-  const selectNativeEntitiesMap = (state: SliceState) =>
-    Object.fromEntries(
-      entitySelectors
-        .selectAll(extractEntitiesState(state))
-        .map(entity => [resolveEntityId(entity), toNativeEntity(entity)]),
-    ) as Record<EntityId, NativeEntity<Machine, EntityId, Mode>>;
+  const selectAllEntities = (state: SliceState) =>
+    entitySelectors.selectAll(extractEntitiesState(state));
+
+  const selectAllNative = createDraftSafeSelector(selectAllEntities, entities =>
+    entities.map(toNativeEntity),
+  );
+
+  const selectNativeEntitiesMap = createDraftSafeSelector(
+    selectAllEntities,
+    entities =>
+      Object.fromEntries(
+        entities.map(entity => [
+          resolveEntityId(entity),
+          toNativeEntity(entity),
+        ]),
+      ) as Record<EntityId, NativeEntity<Machine, EntityId, Mode>>,
+  );
 
   const reboundUserSelectors = rebindUserSelectors(
     userSelectors ?? {},
@@ -274,10 +286,7 @@ export const toCollectionSliceOptions = <
     selectIds: state => entitySelectors.selectIds(extractEntitiesState(state)),
     selectTotalCount: state =>
       entitySelectors.selectTotal(extractEntitiesState(state)),
-    selectAllNative: state =>
-      entitySelectors
-        .selectAll(extractEntitiesState(state))
-        .map(toNativeEntity),
+    selectAllNative,
     selectNativeEntitiesMap,
     selectNativeById: (state, id: EntityId) => {
       const entity = entitySelectors.selectById(

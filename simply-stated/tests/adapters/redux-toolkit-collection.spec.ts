@@ -168,6 +168,33 @@ describe('toCollectionSliceOptions', () => {
       expect(map['a']!.is(machine.state.Success)).toBe(true);
     });
 
+    it('selectAllNative / selectNativeEntitiesMap are memoised (stable ref until entities change)', () => {
+      const { machine, slice, store } = setupExplicit();
+      store.dispatch(
+        slice.actions.addEntity({ entityId: 'a', state: machine.state.Idle() }),
+      );
+
+      const allFirst = slice.selectors.selectAllNative(store.getState());
+      const mapFirst = slice.selectors.selectNativeEntitiesMap(
+        store.getState(),
+      );
+
+      // No entity change → same references.
+      expect(slice.selectors.selectAllNative(store.getState())).toBe(allFirst);
+      expect(slice.selectors.selectNativeEntitiesMap(store.getState())).toBe(
+        mapFirst,
+      );
+
+      // A transition on the entity → recomputed, new references.
+      store.dispatch(slice.actions.fetch({ entityId: 'a' }));
+      expect(slice.selectors.selectAllNative(store.getState())).not.toBe(
+        allFirst,
+      );
+      expect(
+        slice.selectors.selectNativeEntitiesMap(store.getState()),
+      ).not.toBe(mapFirst);
+    });
+
     it('user selectors receive the native entities map (incl. extra args)', () => {
       const machine = makeFetchMachine();
       const slice = createSlice({
