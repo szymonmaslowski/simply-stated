@@ -72,20 +72,8 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: npm version "$VERSION" --no-git-tag-version
 
-      - name: Commit & tag
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          # Committer is attribution only — push permission comes from the token.
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -am "chore(release): v$VERSION" --no-verify
-          git tag "v$VERSION"
-
-      - name: Push
-        if: ${{ !inputs.dry_run }}
-        run: git push origin main --follow-tags
-
+      # Publish before any irreversible git state. If publish fails, main is
+      # untouched and the run can be retried with the same version.
       - name: Publish to npm (dry run)
         if: ${{ inputs.dry_run }}
         working-directory: simply-stated
@@ -97,6 +85,21 @@ jobs:
         run: |
           npm install -g npm@latest # OIDC trusted publishing needs npm >= 11.5
           npm publish --provenance --access public
+
+      - name: Commit & tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Committer is attribution only — push permission comes from the token.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am "chore(release): v$VERSION" --no-verify
+          # Annotated tag so `git push --follow-tags` actually pushes it.
+          git tag -a "v$VERSION" -m "v$VERSION"
+
+      - name: Push
+        if: ${{ !inputs.dry_run }}
+        run: git push origin main --follow-tags
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
@@ -112,6 +115,6 @@ jobs:
         run: |
           {
             echo "### Dry run for v$VERSION"
-            echo "Validated, built, tested, bumped, committed and tagged locally."
-            echo "Skipped: push to main, npm publish, GitHub Release."
+            echo "Validated, built, tested, bumped, publish dry-run, committed and tagged locally."
+            echo "Skipped: real npm publish, push to main, GitHub Release."
           } >> "$GITHUB_STEP_SUMMARY"
