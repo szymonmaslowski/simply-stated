@@ -129,9 +129,15 @@ const makeStateCreator = <Data extends NonNullable<unknown> | void>({
   });
 };
 
-export const defineState = <const StateNames extends readonly string[]>(
+export const defineState = <
+  const StateNames extends readonly [string, ...string[]],
+>(
   ...stateNames: ValidateNoStar<StateNames>
 ): DefineStateTuple<StateNames> => {
+  if (stateNames.length === 0) {
+    throw new Error('defineState requires at least one state name');
+  }
+
   stateNames.forEach(sn => {
     if (sn !== '*') return;
     throw new Error("'*' is reserved for cross-state events");
