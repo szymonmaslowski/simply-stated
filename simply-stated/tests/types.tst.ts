@@ -23,6 +23,12 @@ void (() => {
   defineState('A').withData<undefined>();
 });
 
+// 2b. At least one state name is required.
+void (() => {
+  // @ts-expect-error Expected at least 1 arguments, but got 0.
+  defineState();
+});
+
 // --- combineStates() — duplicate state detection ----------------------------
 
 // 3. Same state across two separate defineState() calls.

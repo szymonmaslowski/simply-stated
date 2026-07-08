@@ -25,6 +25,13 @@ describe('defineState', () => {
       "'*' is reserved for cross-state events",
     );
   });
+
+  it('throws at runtime when called with no state names', () => {
+    // @ts-expect-error at least one state name is required
+    expect(() => defineState()).toThrow(
+      'defineState requires at least one state name',
+    );
+  });
 });
 
 describe('combineStates', () => {
