@@ -7,7 +7,13 @@
  */
 
 import { expect, test } from 'tstyche';
-import { combineStates, defineState, type EventOf, type StateOf } from '../src';
+import {
+  combineStates,
+  defineState,
+  is,
+  type EventOf,
+  type StateOf,
+} from '../src';
 
 // --- defineState() ----------------------------------------------------------
 
@@ -234,10 +240,10 @@ test('name discriminator narrows the state union', () => {
 
 test('is() narrows the state union', () => {
   const { state, transition, event } = demoMachine;
-  const s = transition(state.Closed(), event.reset());
-  if (s.is(state.Open)) {
-    expect(s.name).type.toBe<'Open'>();
-    expect(s.data).type.toBe<{ accountId: string }>();
+  const currentState = transition(state.Closed(), event.reset());
+  if (is(currentState, state.Open)) {
+    expect(currentState.name).type.toBe<'Open'>();
+    expect(currentState.data).type.toBe<{ accountId: string }>();
   }
 });
 

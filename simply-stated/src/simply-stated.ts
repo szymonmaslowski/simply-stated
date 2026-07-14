@@ -47,11 +47,7 @@ type StateObject<
   Data extends NonNullable<unknown> | void = void,
 > = Readonly<
   Data extends void ? { name: StateName } : { name: StateName; data: Data }
-> & {
-  is<StateCreators extends readonly AnyStateCreator[]>(
-    ...creators: StateCreators
-  ): this is StateType<StateCreators>;
-};
+>;
 
 type StateCreator<
   StateName extends string,
@@ -98,31 +94,19 @@ type ValidateNoStar<StateNames extends readonly string[]> = {
     : StateNames[SN];
 };
 
-export type PlainStateFromNative<State extends AnyNativeState> =
-  State extends unknown ? Omit<State, 'is'> : never;
-
-export const toNativeState = <
-  PlainState extends PlainStateFromNative<AnyNativeState>,
->(
-  state: PlainState,
-) => ({
-  ...state,
-  is: (...stateCreators: AnyStateCreator[]) =>
-    stateCreators.some(sc => sc.stateName === state.name),
-});
-
-export const toPlainState = <State extends AnyNativeState>(state: State) => {
-  const { is: _is, ...plainState } = state;
-  return plainState as PlainStateFromNative<State>;
-};
+export const is = <const StateCreators extends readonly AnyStateCreator[]>(
+  state: { readonly name: string },
+  ...stateCreators: StateCreators
+): state is StateType<StateCreators> =>
+  stateCreators.some(stateCreator => stateCreator.stateName === state.name);
 
 const makeStateCreator = <Data extends NonNullable<unknown> | void>({
   stateName,
   withData,
 }: StateDefinition<string, Data>) => {
   const stateCreator = withData
-    ? (data: Data) => toNativeState({ name: stateName, data })
-    : () => toNativeState({ name: stateName });
+    ? (data: Data) => ({ name: stateName, data })
+    : () => ({ name: stateName });
 
   return Object.assign(stateCreator, {
     stateName,
@@ -444,10 +428,10 @@ export const combineStates = <
   return { state: stateCreatorsMap, createMachine };
 };
 
-export type AnyNativeState = ReturnType<StateCreator<string, any>>;
+export type AnyState = ReturnType<StateCreator<string, any>>;
 
 export type AnyMachine = {
   event: Record<string, (...args: any) => { type: string }>;
   state: Record<string, AnyStateCreator>;
-  transition: (state: any, event: any) => AnyNativeState;
+  transition: (state: any, event: any) => AnyState;
 };

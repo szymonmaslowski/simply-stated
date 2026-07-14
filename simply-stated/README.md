@@ -58,6 +58,8 @@ Next, you process it with your state-management library of choice using
 available [adapter](#adapters) or do it manually, like below.
 
 ```typescript
+import { is } from 'simply-stated';
+
 const { state } = workerMachine;
 
 type MachineState = StateOf<typeof state>;
@@ -79,7 +81,7 @@ const nextEvent = workerMachine.event.consumed({
 });
 const resultingState = processEvents([nextEvent]);
 
-if (currentState.is(state.Queued, state.Processing)) {
+if (is(currentState, state.Queued, state.Processing)) {
   console.info('Job already consumed. Details:', currentState.data);
 }
 ```

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { combineStates, defineState } from '../src';
+import { combineStates, defineState, is } from '../src';
 
 describe('defineState', () => {
   it('returns a definition object for each state name passed', () => {
@@ -85,25 +85,26 @@ describe('state object', () => {
     });
   });
 
-  it('exposes an is() method', () => {
-    expect(typeof state.A().is).toBe('function');
+  it('is a plain object (no is method)', () => {
+    expect(state.A()).toEqual({ name: 'A' });
+    expect('is' in state.A()).toBe(false);
   });
 
   describe('is()', () => {
     it('returns true when current state matches the passed creator', () => {
-      expect(state.A().is(state.A)).toBe(true);
+      expect(is(state.A(), state.A)).toBe(true);
     });
 
     it('returns false when current state does not match', () => {
-      expect(state.A().is(state.B)).toBe(false);
+      expect(is(state.A(), state.B)).toBe(false);
     });
 
     it('returns true if any of multiple creators matches', () => {
-      expect(state.A().is(state.B, state.A, state.C)).toBe(true);
+      expect(is(state.A(), state.B, state.A, state.C)).toBe(true);
     });
 
     it('returns false when none of multiple creators matches', () => {
-      expect(state.A().is(state.B, state.C)).toBe(false);
+      expect(is(state.A(), state.B, state.C)).toBe(false);
     });
   });
 });
@@ -175,7 +176,7 @@ describe('createMachine', () => {
         event.opened({ accountId: 'x' }),
       );
       expect(opened.name).toBe('Open');
-      expect(opened.is(state.Open) && opened.data).toEqual({ accountId: 'x' });
+      expect(is(opened, state.Open) && opened.data).toEqual({ accountId: 'x' });
 
       const reset = transition(opened, event.reset());
       expect(reset.name).toBe('Closed');
@@ -209,7 +210,7 @@ describe('createMachine', () => {
       const { transition, event, state } = buildMachine();
       const next = transition(state.Closed(), event.opened({ accountId: 'a' }));
       expect(next.name).toBe('Open');
-      expect(next.is(state.Open) && next.data).toEqual({ accountId: 'a' });
+      expect(is(next, state.Open) && next.data).toEqual({ accountId: 'a' });
     });
 
     it('passes previousData and payload to the per-state handler', () => {
@@ -222,7 +223,7 @@ describe('createMachine', () => {
       const m = createMachine({ A: { add: spy } });
       const next = m.transition(state.A({ n: 1 }), m.event.add({ n: 2 }));
       expect(spy).toHaveBeenCalledWith({ n: 1 }, { n: 2 });
-      expect(next.is(state.A) && next.data).toEqual({ n: 3 });
+      expect(is(next, state.A) && next.data).toEqual({ n: 3 });
     });
 
     it('falls back to the "*" cross-state handler when no per-state handler matches', () => {
