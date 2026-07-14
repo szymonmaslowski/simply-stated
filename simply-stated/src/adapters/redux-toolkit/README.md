@@ -88,15 +88,39 @@ import {
 - **Lifecycle reducers**
 
   Two actions for adding/removing state entities are provided out of the box
-  - `addEntity({ entityId: Id, state: NativeState })`
+  - `addEntity(entity)` — the entity being the machine state (with an
+    `entityId` appended in the explicit id mode: `{ entityId, ...state }`)
   - `removeEntity({ entityId: Id })`
+
+- **Reducers factory**
+
+  Provide the `reducers` factory if you want to easily rename the default
+  lifecycle reducers or add some extra ones. The factory is receiving
+  - default lifecycle reducers
+  - entity adapter's CRUD functions (addOne, addMany, setOne, setMany...).
+
+  Whatever it returns replaces the two default lifecycle reducers (event
+  reducers always stay). Returned reducers get the RTK `EntityState` — nesting
+  is handled for you — and may either mutate it or return a new one
+
+  ```typescript
+  toCollectionSliceOptions(myMachine, {
+    reducers: (lifecycleReducers, entityAdapterCRUD) => ({
+      addMyEntity: lifecycleReducers.addEntity,
+      clear: entitiesState => entityAdapterCRUD.removeAll(entitiesState),
+    }),
+  });
+  ```
+
+  _Machine event names are reserved, so you cannot use them as custom
+  reducer names._
 
 - **Id modes.**
   - By default, each state entity gets an `entityId` appended.
   - In case all the machine's states carry an identifier in a data, you can point
     it out with the `selectIdFromData` option.
   - Providing `selectIdFromData` removes `entityId` from the entity state and
-    the `addEntity` action (`addEntity({ state: NativeState })`);
+    the `addEntity` action (`addEntity(state)`);
 
 - **Actions patched to target specific state entities.**
   - Each event-derived action specify an `entityId` in the payload to target
@@ -104,15 +128,32 @@ import {
   - If particular machine event has a payload, the derived action will have
     that payload nested: `{ entityId, payload }`.
 
-- **Built-in selector**
+- **Selectors**
 
-  There are a bunch of default RTK's entity adapter selectors provided out
-  of the box. Those returning state are patched to return the **native** one.
-  - `selectIds`
-  - `selectTotalCount`
-  - `selectAllNative`
-  - `selectNativeEntitiesMap`
-  - `selectNativeById`
+  No selectors are provided by default. Define your own via the `selectors`
+  option, which accepts either shape:
+  - a **plain object** — each selector receives the RTK `EntityState`:
+
+    ```typescript
+    toCollectionSliceOptions(myMachine, {
+      selectors: {
+        countAll: entitiesState => entitiesState.ids.length,
+      },
+    });
+    ```
+
+  - a **function** — receives the entity adapter's own selectors
+    (`selectAll`, `selectById`, `selectIds`, `selectTotal`, `selectEntities`) so
+    you can build on them:
+
+    ```typescript
+    toCollectionSliceOptions(myMachine, {
+      selectors: entitySelectors => ({
+        selectAll: entitySelectors.selectAll,
+        selectById: entitySelectors.selectById,
+      }),
+    });
+    ```
 
 ## See them in action
 

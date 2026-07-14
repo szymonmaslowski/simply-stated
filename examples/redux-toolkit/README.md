@@ -28,10 +28,12 @@ defined in [../example-machines.ts](../example-machines.ts).
 ### `toCollectionSliceOptions(machine)` - a collection of machine states.
 
 - [basic-collection.ts](./basic-collection.ts) - **a collection of one machine states**.
-
-  This one needs to distinguish the specific fetch state targeted via an
-  action/selector. Therefore, every action carries a payload with an `entityId`
-  property.
+  - This case needs to distinguish the specific fetch state targeted via an
+    action. Therefore, every action carries a payload with an `entityId`
+    property.
+  - It allows the `selectors` option to be a function accepting the inner RTK entity
+    adapter's selectors so they can be utilised by the resulting selectors.
+    An object literal is still supported though.
 
 - [complex-collection.ts](./complex-collection.ts) - **several collections in one slice**
 
@@ -41,4 +43,7 @@ defined in [../example-machines.ts](../example-machines.ts).
   - The job case provides the `selectIdFromData` option that point out the
     entity id from the state's data. With it, no redundant `entityId` property is stored.
   - The `sortComparer` option (the same as RTK's entity adapter one) orders job
-    entities by a **native** state ranking.
+    entities by a state ranking.
+  - The `reducers` factory renames the default lifecycle reducers (avoiding a
+    name clash between the two collections) and adds a custom
+    `addManyFetchEntities` reducer built on the entity adapter's `addMany`.
