@@ -47,3 +47,17 @@ defined in [../example-machines.ts](../example-machines.ts).
   - The `reducers` factory renames the default lifecycle reducers (avoiding a
     name clash between the two collections) and adds a custom
     `addManyFetchEntities` reducer built on the entity adapter's `addMany`.
+
+### Manual integration (no adapters)
+
+- [manual.ts](./manual.ts) — **wiring machines into slices by hand**.
+
+  A machine is just a reducer (`transition(state, event) => state`), so the
+  adapters are a convenience, not a requirement. Shows both action styles across
+  three slices:
+  - **one action per event** (single instance) — each event is its own action,
+    like `toSliceOptions` generates.
+  - **a single `transition` action whose payload is the event** (single
+    instance) — tiny action surface; the caller builds the event.
+  - **a manual collection** keyed by id in a plain record, driven by one
+    per-entity `transition({ id, event })` action.
