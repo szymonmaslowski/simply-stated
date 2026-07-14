@@ -12,19 +12,18 @@ defined in [../example-machines.ts](../example-machines.ts).
   The simplest case, a single `fetchMachine` machine mapped to a slice.
   - Machine state becomes the slice state
   - Events mapped 1:1 to actions,
-  - One `selectNativeState` selector available by default
-  - The `initialState` specified via the option.
+  - The `initialState` specified via the required option.
 
 - [complex.ts](./complex.ts) — **composing several machines into one slice**.
 
-  Two machines plus extra plain state, merged into a single `complex` slice.
+  Two machines plus extra state, merged into a single `complex` slice.
   - Each machine specifies its "mounting point" via the `nestingPath` property.
-  - The fetch machine case defines a custom `selectError` selector that receives
-    the (**native**) fetch state as argument.
+  - Each machine defines its own custom selectors (e.g. `selectFetchState`,
+    `selectError`) that receive the machine state as argument.
 
-  Some level of manual wiring is required here: assembling all slice state parts,
-  renaming selectors to avoid naming clash (default `selectNativeState` selector
-  created for both machines).
+  Some level of manual wiring is required here:
+  - assembling all slice state parts
+  - merging each machine's selectors into the combined slice.
 
 ### `toCollectionSliceOptions(machine)` - a collection of machine states.
 

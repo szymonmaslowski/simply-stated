@@ -1,22 +1,16 @@
-import { createDraftSafeSelector } from '@reduxjs/toolkit';
 import type { SliceSelectors } from '@reduxjs/toolkit';
-import type { Simplify } from 'type-fest';
-import { toNativeState, toPlainState } from '../../simply-stated';
-import type { AnyMachine, PlainStateFromNative } from '../../simply-stated';
-import { getAtPath, setAtPath, rebindUserSelectors } from './shared';
+import { getAtPath, setAtPath, splitPath } from '../../path';
+import type { AnyMachine } from '../../simply-stated';
+import { rebindUserSelectors } from './shared';
 import type {
   EventPayload,
-  EventReducer,
-  NativeStateOfMachine,
+  GenericReducer,
   NestAt,
-  RebindSelectors,
-  ReservedSelectors,
+  StateOfMachine,
 } from './shared';
 
-type BuiltinSelectorName = 'selectNativeState';
-
 type EventReducers<Machine extends AnyMachine, SliceState> = {
-  [K in keyof Machine['event']]: EventReducer<
+  [K in keyof Machine['event']]: GenericReducer<
     SliceState,
     EventPayload<Machine['event'][K]>
   >;
@@ -24,10 +18,9 @@ type EventReducers<Machine extends AnyMachine, SliceState> = {
 
 export const toSliceOptions = <
   Machine extends AnyMachine,
-  NativeState extends NativeStateOfMachine<Machine>,
+  State extends StateOfMachine<Machine>,
   NestingPath extends string | undefined = undefined,
-  Selectors extends SliceSelectors<NativeState> &
-    ReservedSelectors<BuiltinSelectorName> = Record<never, never>,
+  Selectors extends SliceSelectors<State> = Record<never, never>,
 >(
   machine: Machine,
   {
@@ -35,57 +28,39 @@ export const toSliceOptions = <
     nestingPath = '',
     selectors: userSelectors,
   }: {
-    initialState: NoInfer<NativeState>;
+    initialState: NoInfer<State>;
     nestingPath?: NestingPath;
-    selectors?: Selectors & SliceSelectors<NativeState>;
+    selectors?: Selectors & SliceSelectors<State>;
   },
 ) => {
-  type PlainState = Simplify<PlainStateFromNative<NativeState>>;
-  type SliceState = NestAt<NestingPath, PlainState>;
+  type SliceState = NestAt<NestingPath, State>;
+
+  const pathKeys = splitPath(nestingPath);
 
   const reducers = Object.fromEntries(
     Object.keys(machine.event).map(type => [
       type,
       (state, action) => {
         const nextState = machine.transition(
-          getAtPath<NativeState>(state, nestingPath),
+          getAtPath<State>(state, pathKeys),
           machine.event[type]!(action.payload),
         );
-        return setAtPath(state, nestingPath, toPlainState(nextState));
+        return setAtPath(state, pathKeys, nextState);
       },
     ]),
   ) as EventReducers<Machine, SliceState>;
 
-  const selectNativeState = createDraftSafeSelector(
-    (state: SliceState) => getAtPath<PlainState>(state, nestingPath),
-    state => toNativeState(state) as NativeState,
+  const selectState = (state: SliceState) => getAtPath<State>(state, pathKeys);
+
+  const selectors = rebindUserSelectors(
+    userSelectors ?? ({} as Selectors & SliceSelectors<State>),
+    selectState,
   );
 
-  const wrappedSelectors = rebindUserSelectors(
-    userSelectors ?? {},
-    selectNativeState,
-  );
-
-  const selectors = {
-    selectNativeState,
-    ...wrappedSelectors,
-  } as Simplify<
-    { selectNativeState: typeof selectNativeState } & RebindSelectors<
-      SliceState,
-      Selectors
-    >
-  >;
-
-  const plainInitialState = toPlainState(initialState);
-  let sliceInitialState = {} as SliceState;
-  sliceInitialState = setAtPath(
-    sliceInitialState,
-    nestingPath,
-    plainInitialState,
-  );
+  const sliceInitialState = setAtPath<SliceState>({}, pathKeys, initialState);
 
   return {
-    initialState: sliceInitialState as SliceState,
+    initialState: sliceInitialState,
     reducers,
     selectors,
   };

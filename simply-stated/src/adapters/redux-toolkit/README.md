@@ -40,10 +40,8 @@ import {
 
 ### Both adapters:
 
-- **State is stored plain, exposed native.**
-  (See [Native vs Plain state](../../../../README.md#native-vs-plain-state)).
-  - Reducers store only the plain, serialisable state.
-  - Selectors expose the native one.
+- **State is the stored value.**
+  Machine state is a serialisable object, so it is stored as-is.
 
 - **Events become actions.**
   - Every machine event is turned into a slice action.
@@ -51,21 +49,34 @@ import {
     next state.
 
 - **Selectors**
-  - Built-in selectors return the native state.
-  - Possibility to define custom selectors via the `selectors` option.
-  - Custom selector builders receive the native state as the first argument.
-  - Built-in selector names (see below) are reserved - custom selectors can't
-    use those names
+  - Expose your custom selectors via the optional `selectors` option.
+  - Each custom selector receives the state as its first argument, plus an
+    extra arguments representing the selector parameter - same as the RTK do.
+  - Selectors are rebound to the slice state, so they keep working when the
+    machine is mounted under a `nestingPath`.
 
 - **`nestingPath` option enables composition.**
   - It mounts a machine's state at a given path inside the slice state
-  - Reducers/selectors work against the nested state.
+  - Reducers/selectors work against the nested state - the state parameter
+    is unnested (you don't have to access it via the nesting path).
 
 ### Single instance adapter (`toSliceOptions`) specifics
 
-- **Built-in selector**
+- **Selectors**
 
-  There is one: `selectNativeState`.
+  No selectors are provided by default. Define one by reading the state
+  (machine state) and define optional parameters:
+
+  ```typescript
+  toSliceOptions(myMachine, {
+    initialState: myMachine.state.SomeState(),
+    selectors: {
+      selectState: state => state,
+      selectError: (state, fallback: any) =>
+        is(state, myMachine.state.Failure) ? state.data : fallback,
+    },
+  });
+  ```
 
 ### Collection adapter (`toCollectionSliceOptions`) specifics
 
