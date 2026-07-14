@@ -12,9 +12,6 @@ export type NestAt<Path extends string | undefined, Value> = Path extends string
     : { [K in Path]: Value }
   : Value;
 
-export type EventPayload<EventCreator extends (...args: never[]) => unknown> =
-  Parameters<EventCreator> extends [infer Payload] ? Payload : never;
-
 export type GenericReducer<State, Payload> = [Payload] extends [never]
   ? <S extends State>(state: S) => S
   : <S extends State>(state: S, action: PayloadAction<Payload>) => S;

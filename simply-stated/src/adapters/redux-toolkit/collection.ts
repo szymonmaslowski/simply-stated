@@ -9,15 +9,10 @@ import type {
   SliceSelectors,
 } from '@reduxjs/toolkit';
 import type { Simplify } from 'type-fest';
-import type { AnyMachine, ApiError } from '../../simply-stated';
+import type { AnyMachine, ApiError, EventPayloadOf } from '../../simply-stated';
 import { getAtPath, setAtPath, splitPath } from '../../path';
 import { rebindUserSelectors } from './shared';
-import type {
-  EventPayload,
-  GenericReducer,
-  NestAt,
-  StateOfMachine,
-} from './shared';
+import type { GenericReducer, NestAt, StateOfMachine } from './shared';
 
 const entityAdapterCrudFnNames = [
   'addOne',
@@ -93,7 +88,7 @@ type EventReducers<
 > = {
   [K in keyof Machine['event']]: GenericReducer<
     SliceState,
-    CollectionPayload<Id, EventPayload<Machine['event'][K]>>
+    CollectionPayload<Id, EventPayloadOf<Machine['event'][K]>>
   >;
 };
 

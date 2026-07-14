@@ -347,6 +347,15 @@ export type StateOf<
   }[StateName]
 >;
 
+export type StateCreatorOf<
+  MapOfStateCreators extends StateCreatorsMap<readonly AnyStateCreator[]>,
+  StateName extends keyof MapOfStateCreators = keyof MapOfStateCreators,
+> = {
+  [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
+    ? MapOfStateCreators[SN]
+    : never;
+}[StateName];
+
 export type EventOf<
   MapOfEventCreators extends Record<string, (...args: any) => { type: string }>,
   EventName extends keyof MapOfEventCreators = keyof MapOfEventCreators,
@@ -355,6 +364,9 @@ export type EventOf<
     ? ReturnType<MapOfEventCreators[K]>
     : never;
 }[EventName];
+
+export type EventPayloadOf<EventCreator extends (...args: never[]) => unknown> =
+  Parameters<EventCreator> extends [infer Payload] ? Payload : never;
 
 export const combineStates = <
   const DefinitionGroups extends readonly (readonly AnyStateDefinition[])[],

@@ -240,6 +240,35 @@ if (is(currentState, state.Queued, state.Processing)) {
 
 </details>
 
+## Nesting machines
+
+First, embed one machine's state inside another's `data`.
+
+```typescript
+const innnerMachine = createMachine(/* ... */);
+
+defineState('OuterState').withData<{
+  inner: StateOf<typeof innnerMachine.state>;
+}>(),
+```
+
+Next, define outer machine's event handler that runs
+`innerMachine.transition()` or use the `forwardEvents` helper.
+
+```typescript
+Outer: {
+  ...forwardEvents(innerMachine, state.Outer, data => data.inner),
+  transitionInner: ({ inner }, event: EventOf<typeof innnerMachine.event>) =>
+    state.Outer({ inner: innerMachine.transition(inner, event) }),
+}
+```
+
+The `forwardEvents` helper turns the inner machine's events into handlers on an outer
+state; when it doesn't fit, drive the inner machine with `transition` by hand.
+
+See the [nesting docs](simply-stated/src/nesting/README.md) ·
+[examples](examples/nesting/README.md).
+
 ## Adapters & examples
 
 Describe your state, then plug it into your state manager with available
