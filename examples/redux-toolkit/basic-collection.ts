@@ -2,59 +2,43 @@
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { toCollectionSliceOptions } from 'simply-stated/redux-toolkit';
 import { fetchMachine } from '../example-machines';
-import type { StateOf } from 'simply-stated';
+import { is } from 'simply-stated';
 
-const makeBasicCollectionSlice = () => {
-  const basicCollectionSlice = createSlice({
-    name: 'basic-collection',
-    ...toCollectionSliceOptions(fetchMachine),
-  });
+const basicCollectionSlice = createSlice({
+  name: 'basic-collection',
+  ...toCollectionSliceOptions(fetchMachine, {
+    // The adapter provides selectors of the internal RTK entity-adapter so you
+    // can expose exactly the ones you need, returning the managed states.
+    selectors: entitySelectors => ({
+      selectById: entitySelectors.selectById,
+    }),
+  }),
+});
 
-  // @ts-expect-error actions not used
-  const { addEntity, removeEntity, fetch, retry, resolved, refetch, rejected } =
-    basicCollectionSlice.actions;
+// There are two builtin "lifecycle" reducers: addEntity and removeEntity
+const { addEntity, removeEntity, fetch, retry, resolved, refetch, rejected } =
+  basicCollectionSlice.actions;
 
-  // @ts-expect-error selectors not used
-  // The adapter out of the box provides selectors of the internal RTK's entity
-  // adapter. Not exactly them actually... Those selectors are patched to return
-  // the native machine state as the state managed by the entity adapter is plain.
-  const {
-    selectAllNative,
-    selectNativeEntitiesMap,
-    selectNativeById,
-    selectIds,
-    selectTotalCount,
-  } = basicCollectionSlice.selectors;
-
-  // @ts-expect-error properties not used
-  // The collection adapter additionally exposes the bare RTK's entity adapter
-  const { entityAdapter } = toCollectionSliceOptions(fetchMachine);
-
-  return basicCollectionSlice;
-};
-
-const basicCollectionSlice = makeBasicCollectionSlice();
+// It additionally exposes the bare RTK's entity adapter
+const { entityAdapter } = toCollectionSliceOptions(fetchMachine);
 
 const store = configureStore({
   reducer: { [basicCollectionSlice.name]: basicCollectionSlice.reducer },
 });
 
-const logFetchData = (fetchSuccess?: StateOf<typeof fetchMachine.state>) => {
-  if (fetchSuccess?.is(fetchMachine.state.Success)) {
-    console.info('Fetch success! Data:', fetchSuccess.data.value);
-  }
-};
-
-const fetch1 = basicCollectionSlice.selectors.selectNativeById(
+const fetch1 = basicCollectionSlice.selectors.selectById(
   store.getState(),
   'fetch1',
 );
-logFetchData(fetch1);
+if (fetch1 && is(fetch1, fetchMachine.state.Success)) {
+  console.info('Fetch success! Data:', fetch1.data.value);
+}
 
 store.dispatch(
-  basicCollectionSlice.actions.addEntity({
-    entityId: 'fetch1',
-    state: fetchMachine.state.Idle(),
+  addEntity({
+    entityId: 'fetch2',
+    ...fetchMachine.state.Idle(),
   }),
 );
-store.dispatch(basicCollectionSlice.actions.fetch({ entityId: 'fetch1' }));
+store.dispatch(fetch({ entityId: 'fetch2', payload: { query: '' } }));
+store.dispatch(removeEntity({ entityId: 'fetch2' }));

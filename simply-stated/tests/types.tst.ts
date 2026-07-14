@@ -7,7 +7,13 @@
  */
 
 import { expect, test } from 'tstyche';
-import { combineStates, defineState, type EventOf, type StateOf } from '../src';
+import {
+  combineStates,
+  defineState,
+  is,
+  type EventOf,
+  type StateOf,
+} from '../src';
 
 // --- defineState() ----------------------------------------------------------
 
@@ -234,10 +240,10 @@ test('name discriminator narrows the state union', () => {
 
 test('is() narrows the state union', () => {
   const { state, transition, event } = demoMachine;
-  const s = transition(state.Closed(), event.reset());
-  if (s.is(state.Open)) {
-    expect(s.name).type.toBe<'Open'>();
-    expect(s.data).type.toBe<{ accountId: string }>();
+  const currentState = transition(state.Closed(), event.reset());
+  if (is(currentState, state.Open)) {
+    expect(currentState.name).type.toBe<'Open'>();
+    expect(currentState.data).type.toBe<{ accountId: string }>();
   }
 });
 
@@ -278,6 +284,27 @@ test('withData<Primitive>() yields a state creator that accepts the primitive', 
   const open = state.Open('hello');
   expect(open.name).type.toBe<'Open'>();
   expect(open.data).type.toBe<string>();
+});
+
+test('identical union payloads shared across states are allowed', () => {
+  const { createMachine, state } = combineStates(
+    defineState('A'),
+    defineState('B'),
+  );
+  const { event } = createMachine({
+    A: {
+      go: (_, _p: string | number) => state.A(),
+    },
+    B: {
+      go: (_, _p: string | number) => state.B(),
+    },
+  });
+  expect(event.go).type.toBe<
+    (payload: string | number) => {
+      type: 'go';
+      payload: string | number;
+    }
+  >();
 });
 
 test('union-typed payload in a single handler is allowed', () => {

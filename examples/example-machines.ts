@@ -2,34 +2,30 @@ import { combineStates, defineState } from 'simply-stated';
 
 export const fetchMachine = combineStates(
   defineState('Idle'),
-  defineState('Loading'),
-  defineState('Success').withData<{ value: string }>(),
-  defineState('Failure').withData<{ error: string }>(),
+  defineState('Fetching').withData<{ query: string }>(),
+  defineState('Success').withData<{ query: string; value: string }>(),
+  defineState('Failure').withData<{ query: string; error: string }>(),
 ).createMachine(state => ({
   Idle: {
-    fetch: () => state.Loading(),
+    fetch: (_, paylaod: { query: string }) => state.Fetching(paylaod),
   },
-  Loading: {
-    resolved: (_, value: string) => state.Success({ value }),
-    rejected: (_, error: string) => state.Failure({ error }),
+  Fetching: {
+    resolved: (data, value: string) => state.Success({ ...data, value }),
+    rejected: (data, error: string) => state.Failure({ ...data, error }),
   },
   Success: {
-    refetch: () => state.Loading(),
+    refetch: ({ query }) => state.Fetching({ query }),
   },
   Failure: {
-    retry: () => state.Loading(),
+    retry: ({ query }) => state.Fetching({ query }),
   },
 }));
 
 export const toggleMachine = combineStates(
-  defineState('Open', 'Closed'),
+  defineState('On', 'Off'),
 ).createMachine(state => ({
-  Open: {
-    closed: () => state.Closed(),
-  },
-  Closed: {
-    opened: () => state.Open(),
-  },
+  On: { off: state.Off },
+  Off: { on: state.On },
 }));
 
 export const jobMachine = combineStates(

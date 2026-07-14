@@ -162,7 +162,7 @@ and the **event** to compute the **resulting state**.
 <summary>With comments</summary>
 
 ```typescript
-import type { EventOf, StateOf } from 'simply-stated';
+import { is, type EventOf, type StateOf } from 'simply-stated';
 
 const { state } = workerMachine;
 
@@ -197,7 +197,7 @@ const resultingState = processEvents([nextEvent]);
 // The 'is' helper works by comparing the state names
 // currentState.name === state.Queued.stateName
 // || currentState.name === state.Processing.stateName
-if (currentState.is(state.Queued, state.Processing)) {
+if (is(currentState, state.Queued, state.Processing)) {
   // It narrows the state type.
   // The .data property is available for Queued and Processing states
   console.info('Job already consumed. Details:', currentState.data);
@@ -210,7 +210,7 @@ if (currentState.is(state.Queued, state.Processing)) {
 <summary>Just code</summary>
 
 ```typescript
-import type { EventOf, StateOf } from 'simply-stated';
+import { is, type EventOf, type StateOf } from 'simply-stated';
 
 const { state } = workerMachine;
 
@@ -233,12 +233,41 @@ const nextEvent = workerMachine.event.consumed({
 });
 const resultingState = processEvents([nextEvent]);
 
-if (currentState.is(state.Queued, state.Processing)) {
+if (is(currentState, state.Queued, state.Processing)) {
   console.info('Job already consumed. Details:', currentState.data);
 }
 ```
 
 </details>
+
+## Nesting machines
+
+First, embed one machine's state inside another's `data`.
+
+```typescript
+const innnerMachine = createMachine(/* ... */);
+
+defineState('OuterState').withData<{
+  inner: StateOf<typeof innnerMachine.state>;
+}>(),
+```
+
+Next, define outer machine's event handler that runs
+`innerMachine.transition()` or use the `forwardEvents` helper.
+
+```typescript
+Outer: {
+  ...forwardEvents(innerMachine, state.Outer, data => data.inner),
+  transitionInner: ({ inner }, event: EventOf<typeof innnerMachine.event>) =>
+    state.Outer({ inner: innerMachine.transition(inner, event) }),
+}
+```
+
+The `forwardEvents` helper turns the inner machine's events into handlers on an outer
+state; when it doesn't fit, drive the inner machine with `transition` by hand.
+
+See the [nesting docs](simply-stated/src/nesting/README.md) ·
+[examples](examples/nesting/README.md).
 
 ## Adapters & examples
 
@@ -249,31 +278,3 @@ adapters. See examples in [examples/](examples).
   · [docs](simply-stated/src/adapters/redux-toolkit/README.md) ·
   [examples](examples/redux-toolkit/README.md)
 - **Zustand** — _(coming soon)_
-
-## Native vs plain state
-
-There are two types of state:
-
-- **Native state** — what `state.*` creators return and the machine operates on.
-  It has one downside: **it is not serialisable**.
-- **Plain state** — serialisable version, but lacking some methods from
-  the native state.
-
-Therefore, there are `toNativeState` and `toPlainState` helpers available
-for converting between the two.
-
-```typescript
-import { toNativeState, toPlainState } from 'simply-stated';
-
-const { state } = workerMachine;
-
-let native = state.Idle();
-native.is(state.Queued);
-
-const plain = toPlainState(native);
-JSON.stringify(plain); // safe
-
-native = toNativeState(plain);
-```
-
-Adapters for state managers utilise those helpers to achieve serialisability.

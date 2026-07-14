@@ -47,11 +47,7 @@ type StateObject<
   Data extends NonNullable<unknown> | void = void,
 > = Readonly<
   Data extends void ? { name: StateName } : { name: StateName; data: Data }
-> & {
-  is<StateCreators extends readonly AnyStateCreator[]>(
-    ...creators: StateCreators
-  ): this is StateType<StateCreators>;
-};
+>;
 
 type StateCreator<
   StateName extends string,
@@ -98,31 +94,19 @@ type ValidateNoStar<StateNames extends readonly string[]> = {
     : StateNames[SN];
 };
 
-export type PlainStateFromNative<State extends AnyNativeState> =
-  State extends unknown ? Omit<State, 'is'> : never;
-
-export const toNativeState = <
-  PlainState extends PlainStateFromNative<AnyNativeState>,
->(
-  state: PlainState,
-) => ({
-  ...state,
-  is: (...stateCreators: AnyStateCreator[]) =>
-    stateCreators.some(sc => sc.stateName === state.name),
-});
-
-export const toPlainState = <State extends AnyNativeState>(state: State) => {
-  const { is: _is, ...plainState } = state;
-  return plainState as PlainStateFromNative<State>;
-};
+export const is = <const StateCreators extends readonly AnyStateCreator[]>(
+  state: { readonly name: string },
+  ...stateCreators: StateCreators
+): state is StateType<StateCreators> =>
+  stateCreators.some(stateCreator => stateCreator.stateName === state.name);
 
 const makeStateCreator = <Data extends NonNullable<unknown> | void>({
   stateName,
   withData,
 }: StateDefinition<string, Data>) => {
   const stateCreator = withData
-    ? (data: Data) => toNativeState({ name: stateName, data })
-    : () => toNativeState({ name: stateName });
+    ? (data: Data) => ({ name: stateName, data })
+    : () => ({ name: stateName });
 
   return Object.assign(stateCreator, {
     stateName,
@@ -253,6 +237,19 @@ type ContributingStates<Tree, E extends string> = {
   [S in keyof Tree]: E extends keyof NonNullable<Tree[S]> ? S : never;
 }[keyof Tree];
 
+type WrappedPayloads<Tree, E extends string> = {
+  [S in keyof Tree]: E extends keyof NonNullable<Tree[S]>
+    ? S extends '*'
+      ? [InferCrossStateEventPayload<NonNullable<Tree[S]>[E]>]
+      : [InferEventPayload<NonNullable<Tree[S]>[E]>]
+    : never;
+}[keyof Tree];
+
+type AllPayloadsEqual<Tree, E extends string> = IsEqual<
+  WrappedPayloads<Tree, E>,
+  [EventPayloadFor<Tree, E>]
+>;
+
 type ValidateEventPayloadsConsistency<Tree> = {
   [S in keyof Tree]: {
     [E in keyof NonNullable<Tree[S]>]: E extends string
@@ -267,7 +264,9 @@ type ValidateEventPayloadsConsistency<Tree> = {
                   UnionToIntersection<EventPayloadFor<Tree, E>>
                 > extends true
               ? NonNullable<Tree[S]>[E]
-              : ApiError<MismatchErrorMessage>
+              : AllPayloadsEqual<Tree, E> extends true
+                ? NonNullable<Tree[S]>[E]
+                : ApiError<MismatchErrorMessage>
       : NonNullable<Tree[S]>[E];
   };
 };
@@ -348,6 +347,15 @@ export type StateOf<
   }[StateName]
 >;
 
+export type StateCreatorOf<
+  MapOfStateCreators extends StateCreatorsMap<readonly AnyStateCreator[]>,
+  StateName extends keyof MapOfStateCreators = keyof MapOfStateCreators,
+> = {
+  [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
+    ? MapOfStateCreators[SN]
+    : never;
+}[StateName];
+
 export type EventOf<
   MapOfEventCreators extends Record<string, (...args: any) => { type: string }>,
   EventName extends keyof MapOfEventCreators = keyof MapOfEventCreators,
@@ -356,6 +364,9 @@ export type EventOf<
     ? ReturnType<MapOfEventCreators[K]>
     : never;
 }[EventName];
+
+export type EventPayloadOf<EventCreator extends (...args: never[]) => unknown> =
+  Parameters<EventCreator> extends [infer Payload] ? Payload : never;
 
 export const combineStates = <
   const DefinitionGroups extends readonly (readonly AnyStateDefinition[])[],
@@ -444,10 +455,10 @@ export const combineStates = <
   return { state: stateCreatorsMap, createMachine };
 };
 
-export type AnyNativeState = ReturnType<StateCreator<string, any>>;
+export type AnyState = ReturnType<StateCreator<string, any>>;
 
 export type AnyMachine = {
   event: Record<string, (...args: any) => { type: string }>;
   state: Record<string, AnyStateCreator>;
-  transition: (state: any, event: any) => AnyNativeState;
+  transition: (state: any, event: any) => AnyState;
 };

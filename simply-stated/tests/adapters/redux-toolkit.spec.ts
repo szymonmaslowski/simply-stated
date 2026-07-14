@@ -1,6 +1,6 @@
 import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
-import { combineStates, defineState } from '../../src';
+import { combineStates, defineState, is } from '../../src';
 import { toSliceOptions } from '../../src/adapters/redux-toolkit';
 
 const makeFetchMachine = () => {
@@ -28,8 +28,9 @@ const setupFlat = () => {
     ...toSliceOptions(machine, {
       initialState: machine.state.Idle(),
       selectors: {
+        selectState: state => state,
         selectError: state =>
-          state.is(machine.state.Failure) ? state.data.error : null,
+          is(state, machine.state.Failure) ? state.data.error : null,
         matchesName: (state, name: string) => state.name === name,
       },
     }),
@@ -43,6 +44,9 @@ const setupNested = () => {
   const { selectors, ...options } = toSliceOptions(machine, {
     initialState: machine.state.Idle(),
     nestingPath: 'machines.fetch',
+    selectors: {
+      selectState: state => state,
+    },
   });
   const slice = createSlice({
     name: 'app',
@@ -61,7 +65,7 @@ const setupNested = () => {
 
 describe('toSliceOptions', () => {
   describe('flat', () => {
-    it('initial state is the bare plain state', () => {
+    it('initial state is the bare state', () => {
       const { store } = setupFlat();
       expect(store.getState().fetch).toEqual({ name: 'Idle' });
     });
@@ -77,26 +81,25 @@ describe('toSliceOptions', () => {
       });
     });
 
-    it('stores plain, serialisable state (no is method)', () => {
+    it('stores plain, serialisable state', () => {
       const { slice, store } = setupFlat();
       store.dispatch(slice.actions.fetch());
       store.dispatch(slice.actions.resolved('x'));
       const stored = store.getState().fetch;
-      expect('is' in stored).toBe(false);
       expect(JSON.parse(JSON.stringify(stored))).toEqual(stored);
     });
 
-    it('selectNativeState hydrates back to a native state with is', () => {
+    it('selectState returns the stored state; is() narrows it', () => {
       const { machine, slice, store } = setupFlat();
       store.dispatch(slice.actions.fetch());
       store.dispatch(slice.actions.resolved('hi'));
-      const native = slice.selectors.selectNativeState(store.getState());
-      expect(native.name).toBe('Success');
-      expect(native.is(machine.state.Success)).toBe(true);
-      expect(native.is(machine.state.Failure)).toBe(false);
+      const state = slice.selectors.selectState(store.getState());
+      expect(state.name).toBe('Success');
+      expect(is(state, machine.state.Success)).toBe(true);
+      expect(is(state, machine.state.Failure)).toBe(false);
     });
 
-    it('user selectors receive the native state (incl. extra args)', () => {
+    it('user selectors receive the state (incl. extra args)', () => {
       const { slice, store } = setupFlat();
       expect(slice.selectors.selectError(store.getState())).toBeNull();
       store.dispatch(slice.actions.fetch());
@@ -112,6 +115,48 @@ describe('toSliceOptions', () => {
       const { slice, store } = setupFlat();
       store.dispatch(slice.actions.resolved('nope')); // not valid in Idle
       expect(store.getState().fetch).toEqual({ name: 'Idle' });
+    });
+  });
+
+  describe('data values', () => {
+    type LockData = { until: string; attempts: number[] };
+
+    const setupWithData = () => {
+      const { createMachine, state } = combineStates(
+        defineState('Idle'),
+        defineState('Locked').withData<LockData>(),
+      );
+      const machine = createMachine({
+        Idle: { lock: (_, data: LockData) => state.Locked(data) },
+        Locked: {},
+      });
+      const slice = createSlice({
+        name: 'lock',
+        ...toSliceOptions(machine, {
+          initialState: machine.state.Idle(),
+          selectors: { selectState: state => state },
+        }),
+      });
+      const store = configureStore({ reducer: { lock: slice.reducer } });
+      return { machine, slice, store };
+    };
+
+    it('keeps data values intact through the store', () => {
+      const { machine, slice, store } = setupWithData();
+      const data: LockData = {
+        until: '2030-01-01T00:00:00.000Z',
+        attempts: [1, 2, 3],
+      };
+      store.dispatch(slice.actions.lock(data));
+
+      const stored = store.getState().lock;
+      expect(stored).toEqual({ name: 'Locked', data });
+
+      const state = slice.selectors.selectState(store.getState());
+      expect(is(state, machine.state.Locked)).toBe(true);
+      if (is(state, machine.state.Locked)) {
+        expect(state.data).toEqual(data);
+      }
     });
   });
 
@@ -143,13 +188,13 @@ describe('toSliceOptions', () => {
       expect(store.getState().app.machines.fetch).toEqual({ name: 'Loading' });
     });
 
-    it('selectNativeState reads + hydrates the nested branch', () => {
+    it('selectState reads the nested branch', () => {
       const { machine, slice, store } = setupNested();
       store.dispatch(slice.actions.fetch());
       store.dispatch(slice.actions.resolved('deep'));
-      const native = slice.selectors.selectNativeState(store.getState());
-      expect(native.name).toBe('Success');
-      expect(native.is(machine.state.Success)).toBe(true);
+      const state = slice.selectors.selectState(store.getState());
+      expect(state.name).toBe('Success');
+      expect(is(state, machine.state.Success)).toBe(true);
     });
 
     it('ignores events invalid for the current state', () => {
