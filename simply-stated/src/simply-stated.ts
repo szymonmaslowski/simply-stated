@@ -237,6 +237,19 @@ type ContributingStates<Tree, E extends string> = {
   [S in keyof Tree]: E extends keyof NonNullable<Tree[S]> ? S : never;
 }[keyof Tree];
 
+type WrappedPayloads<Tree, E extends string> = {
+  [S in keyof Tree]: E extends keyof NonNullable<Tree[S]>
+    ? S extends '*'
+      ? [InferCrossStateEventPayload<NonNullable<Tree[S]>[E]>]
+      : [InferEventPayload<NonNullable<Tree[S]>[E]>]
+    : never;
+}[keyof Tree];
+
+type AllPayloadsEqual<Tree, E extends string> = IsEqual<
+  WrappedPayloads<Tree, E>,
+  [EventPayloadFor<Tree, E>]
+>;
+
 type ValidateEventPayloadsConsistency<Tree> = {
   [S in keyof Tree]: {
     [E in keyof NonNullable<Tree[S]>]: E extends string
@@ -251,7 +264,9 @@ type ValidateEventPayloadsConsistency<Tree> = {
                   UnionToIntersection<EventPayloadFor<Tree, E>>
                 > extends true
               ? NonNullable<Tree[S]>[E]
-              : ApiError<MismatchErrorMessage>
+              : AllPayloadsEqual<Tree, E> extends true
+                ? NonNullable<Tree[S]>[E]
+                : ApiError<MismatchErrorMessage>
       : NonNullable<Tree[S]>[E];
   };
 };
