@@ -1,18 +1,62 @@
 # Simply Stated
 
-Strongly typed, declarative utility for state machine modeling.
+Strongly typed, declarative utility for state machine modeling,
+that **integrates with your existing state management solution**.
+
+```bash
+npm install simply-stated
+```
 
 <hr/>
 
-Simply Stated is NOT a _state management_ lib - It is all about **state description**.
+Simply Stated is NOT a _state management_ lib - It only **describes** the state.
 
 1. Describe your state shape and behavior.<br />
 2. Drive it using your preferred state management solution.
 
-See [adapters & examples](#adapters--examples) for popular state management
+See [adapters](#adapters) for popular state management
 libraries.
 
-## API
+Fast-forward to:
+
+- [API Walkthrough](#api-walkthrough)
+- [API Reference](./API_REFERENCE.md)
+- [Nesting machines](#nesting-machines)
+- [Adapters](#adapters)
+
+## Quick look
+
+```typescript
+import { combineStates, defineState, type StateOf } from 'simply-stated';
+
+const doorMachine = combineStates(
+  defineState('Open'),
+  defineState('Closed', 'Locked').withData<{ closedTimestamp: number }>(),
+).createMachine(state => ({
+  Open: {
+    close: (_, closedTimestamp: number) => state.Closed({ closedTimestamp }),
+  },
+  Closed: {
+    open: () => state.Open(),
+    lock: data => state.Locked(data),
+  },
+  Locked: {},
+}));
+
+const { event, state, transition } = doorMachine;
+
+let currentState = state.Open() as StateOf<typeof state>;
+currentState = transition(currentState, event.close(Date.now()));
+currentState = transition(currentState, event.lock());
+
+if (currentState.name === 'Locked') {
+  console.info('Closed timestamp:', currentState.data.closedTimestamp);
+}
+```
+
+## API Walkthrough
+
+For the full API listing, head to the [API Reference](./API_REFERENCE.md) page.
 
 The below example showcases an abstract processing worker state.
 
@@ -107,7 +151,7 @@ const workerMachine = combineStates(/* ... */).createMachine(state => ({
     reset: () => state.Idle(),
     // Cross-state events DOES NOT have access to the state's data.
     // The payload of cross-state events is specified as the FIRST param
-    failForced: (reason: string) => state.Failed({ reason }),
+    killed: (reason: string) => state.Failed({ reason }),
   },
 }));
 ```
@@ -139,7 +183,7 @@ const workerMachine = combineStates(/* ... */).createMachine(state => ({
   Failed: {},
   '*': {
     reset: () => state.Idle(),
-    failForced: (reason: string) => state.Failed({ reason }),
+    killed: (reason: string) => state.Failed({ reason }),
   },
 }));
 ```
@@ -153,7 +197,7 @@ This step depends on your application design and the way it manages the state.
 - Backend system might process events and use the state machine to validate and
   derive the current object state.
 - Frontend applications usually store the current state with state management
-  libraries (redux, zustand etc.). See the [adapters & examples](#adapters--examples).
+  libraries (redux, zustand etc.). See the [adapters](#adapters).
 
 Either way, the app calls the `transition` function passing the **base state**
 and the **event** to compute the **resulting state**.
@@ -269,7 +313,7 @@ state; when it doesn't fit, drive the inner machine with `transition` by hand.
 See the [nesting docs](simply-stated/src/nesting/README.md) ·
 [examples](examples/nesting/README.md).
 
-## Adapters & examples
+## Adapters
 
 Describe your state, then plug it into your state manager with available
 adapters. See examples in [examples/](examples).
@@ -278,3 +322,8 @@ adapters. See examples in [examples/](examples).
   · [docs](simply-stated/src/adapters/redux-toolkit/README.md) ·
   [examples](examples/redux-toolkit/README.md)
 - **Zustand** — _(coming soon)_
+- **Pinia** — _(coming soon)_
+
+## License
+
+[MIT](./LICENSE)

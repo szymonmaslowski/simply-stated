@@ -36,6 +36,10 @@ import {
   });
   ```
 
+## See them in action
+
+[examples/redux-toolkit](../../../../examples/redux-toolkit/README.md).
+
 ## How they work
 
 ### Both adapters:
@@ -154,7 +158,3 @@ import {
       }),
     });
     ```
-
-## See them in action
-
-[examples/redux-toolkit](../../../../examples/redux-toolkit/README.md).
