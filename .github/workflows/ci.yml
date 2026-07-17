@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [typecheck, test, lint, format]
+        task: [typecheck, test, lint, format, build:readme]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
