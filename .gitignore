@@ -1,2 +1,4 @@
 **/dist
 **/node_modules
+# Generated at pack time from the root README by scripts/build-package-readme.mjs
+simply-stated/README.md

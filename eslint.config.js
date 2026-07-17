@@ -10,6 +10,12 @@ export default tseslint.config(
     ignores: ['**/dist/**', '**/node_modules/**', '**/.claude/**'],
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly' },
+    },
+  },
+  {
     rules: {
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [

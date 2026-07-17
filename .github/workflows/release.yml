@@ -5,6 +5,10 @@ name: Release
 # version, commits + tags + pushes to main, creates a GitHub Release, and
 # publishes to npm — in one run.
 #
+# The package README is not committed: the "Build package README" step
+# generates it from the root README (see scripts/build-package-readme.mjs),
+# pinning links to the version being cut.
+#
 # Tick "dry run" to exercise it safely: everything runs except the push, the
 # real npm publish, and the GitHub Release (a `npm publish --dry-run` is done
 # instead so you can inspect the tarball).
@@ -71,6 +75,10 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: npm version "$VERSION" --no-git-tag-version
+
+      # Reads the bumped version, so it must run after the bump and before publish.
+      - name: Build package README
+        run: pnpm build:readme
 
       # Publish before any irreversible git state. If publish fails, main is
       # untouched and the run can be retried with the same version.
