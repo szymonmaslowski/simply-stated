@@ -1,8 +1,9 @@
 name: Release
 
-# Manually cut a release. Actions -> Release -> Run workflow -> enter a version
-# (e.g. 1.2.3). The job validates it, gates on build + tests, bumps the package
-# version, commits + tags + pushes to main, creates a GitHub Release, and
+# Manually cut a release. Actions -> Release -> Run workflow -> pick a bump kind
+# (patch/minor/major/prerelease) or type an explicit version. The job resolves
+# the new version from the package's current version, validates it, gates on
+# build + tests, commits + tags + pushes to main, creates a GitHub Release, and
 # publishes to npm — in one run.
 #
 # The package README is not committed: the "Build package README" step
@@ -16,9 +17,19 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (semver, e.g. 1.2.3)'
+      bump:
+        description: 'Version bump (ignored if an explicit version is given)'
         required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+        default: patch
+      version:
+        description: 'Explicit version override (semver, e.g. 1.2.3; blank = use bump)'
+        required: false
         type: string
       dry_run:
         description: 'Dry run (skip push, publish and GitHub Release)'
@@ -38,26 +49,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate version
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]] \
-            || { echo "::error::'$VERSION' is not a valid semver (e.g. 1.2.3)"; exit 1; }
-
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
-
-      - name: Ensure tag is free
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "::error::tag v$VERSION already exists"; exit 1
-          fi
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -65,16 +61,35 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: pnpm
+
+      - name: Resolve & bump version
+        id: resolve
+        working-directory: simply-stated
+        env:
+          BUMP: ${{ inputs.bump }}
+          OVERRIDE: ${{ inputs.version }}
+        run: |
+          if [[ -n "$OVERRIDE" ]]; then
+            ARG="$OVERRIDE"; SOURCE="explicit override"
+          else
+            ARG="$BUMP"; SOURCE="$BUMP bump"
+          fi
+          NEW=$(npm version "$ARG" --no-git-tag-version | sed 's/^v//')
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "### Releasing v$NEW ($SOURCE)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ensure tag is free
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::tag v$VERSION already exists"; exit 1
+          fi
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm build
       - run: pnpm test
-
-      - name: Bump version
-        working-directory: simply-stated
-        env:
-          VERSION: ${{ inputs.version }}
-        run: npm version "$VERSION" --no-git-tag-version
 
       # Reads the bumped version, so it must run after the bump and before publish.
       - name: Build package README
@@ -96,7 +111,7 @@ jobs:
 
       - name: Commit & tag
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve.outputs.version }}
         run: |
           # Committer is attribution only — push permission comes from the token.
           git config user.name 'github-actions[bot]'
@@ -113,16 +128,16 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve.outputs.version }}
         run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes
 
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve.outputs.version }}
         run: |
           {
             echo "### Dry run for v$VERSION"
-            echo "Validated, built, tested, bumped, publish dry-run, committed and tagged locally."
+            echo "Resolved, built, tested, publish dry-run, committed and tagged locally."
             echo "Skipped: real npm publish, push to main, GitHub Release."
           } >> "$GITHUB_STEP_SUMMARY"
