@@ -21,7 +21,7 @@ type EventNameOfMachine<Machine extends AnyMachine> = keyof Machine['event'] &
 
 const recordSelectorPath = (selector: (proxy: unknown) => unknown) => {
   const path: string[] = [];
-  const proxy = new Proxy(
+  const proxy: unknown = new Proxy(
     {},
     {
       get(_, key) {

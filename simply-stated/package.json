@@ -24,20 +24,35 @@
     "url": "https://github.com/szymonmaslowski/simply-stated/issues"
   },
   "type": "module",
-  "main": "./dist/index.js",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=16"
+  },
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
       "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     },
     "./redux-toolkit": {
-      "types": "./dist/adapters/redux-toolkit/index.d.ts",
+      "types": {
+        "import": "./dist/adapters/redux-toolkit/index.d.ts",
+        "require": "./dist/adapters/redux-toolkit/index.d.cts"
+      },
       "import": "./dist/adapters/redux-toolkit/index.js",
-      "require": "./dist/adapters/redux-toolkit/index.js"
-    }
+      "require": "./dist/adapters/redux-toolkit/index.cjs"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"
@@ -49,8 +64,5 @@
     "@reduxjs/toolkit": {
       "optional": true
     }
-  },
-  "dependencies": {
-    "type-fest": "^5.7.0"
   }
 }

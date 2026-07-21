@@ -7,12 +7,14 @@
     "node": ">=20.19.0"
   },
   "scripts": {
-    "build": "tsc -p simply-stated/tsconfig.json",
+    "build": "tsdown --config simply-stated/tsdown.config.ts",
     "build:readme": "node scripts/build-package-readme.mjs",
     "test": "run-s test:*",
     "test:runtime": "vitest run",
     "test:types": "tstyche",
-    "typecheck": "tsc -p simply-stated/tsconfig.json --noEmit && tsc -p examples/tsconfig.json",
+    "typecheck": "run-s typecheck:*",
+    "typecheck:current": "tsc -p simply-stated/tsconfig.json --noEmit && tsc -p examples/tsconfig.json",
+    "typecheck:next": "npx -p typescript@7 tsc -p simply-stated/tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
@@ -20,6 +22,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@eslint/js": "^10.0.1",
@@ -33,9 +36,11 @@
     "nanoid": "^6.0.0",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.8.3",
+    "publint": "^0.3.21",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "simply-stated": "workspace:*",
+    "tsdown": "^0.22.12",
     "tstyche": "^7.2.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
