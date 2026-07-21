@@ -8,7 +8,7 @@ import type {
   PayloadAction,
   SliceSelectors,
 } from '@reduxjs/toolkit';
-import type { Simplify } from 'type-fest';
+import type { Simplify } from '../../type-utils';
 import type { AnyMachine, ApiError, EventPayloadOf } from '../../simply-stated';
 import { getAtPath, setAtPath, splitPath } from '../../path';
 import { rebindUserSelectors } from './shared';

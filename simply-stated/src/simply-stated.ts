@@ -8,7 +8,7 @@ import type {
   Simplify,
   Tagged,
   UnionToIntersection,
-} from 'type-fest';
+} from './type-utils';
 
 export type ApiError<M extends string> = {
   __message: M;
