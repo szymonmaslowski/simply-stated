@@ -4,20 +4,25 @@ import { getAtPath, setAtPath } from '../path';
 import type {
   AnyMachine,
   AnyStateCreator,
+  ApiError,
   EventPayloadOf,
+  NarrowedTransition,
   StateOf,
+  TreeOf,
 } from '../simply-stated';
 
 type DataFromCreator<StateCreator extends AnyStateCreator> =
   Parameters<StateCreator>[0];
 
-type StateSelector<
-  OuterStateCreator extends AnyStateCreator,
-  Machine extends AnyMachine,
-> = (data: DataFromCreator<OuterStateCreator>) => StateOf<Machine['state']>;
-
 type EventNameOfMachine<Machine extends AnyMachine> = keyof Machine['event'] &
   string;
+
+const writeNestedState = (
+  outerStateCreator: AnyStateCreator,
+  data: unknown,
+  path: string[],
+  nextNestedState: unknown,
+) => outerStateCreator(setAtPath(data, path, nextNestedState));
 
 const recordSelectorPath = (selector: (proxy: unknown) => unknown) => {
   const path: string[] = [];
@@ -47,7 +52,7 @@ const makeEventHandlerCreator =
       currentNestedState,
       eventCreator(payload),
     );
-    return outerStateCreator(setAtPath(data, path, nextNestedState));
+    return writeNestedState(outerStateCreator, data, path, nextNestedState);
   };
 
 type ForwardedEventHandler<
@@ -61,24 +66,49 @@ type ForwardedEventHandler<
       payload: EventPayloadOf<Machine['event'][EventName]>,
     ) => ReturnType<OuterStateCreator>;
 
+type EscapesSubset<Machine extends AnyMachine, InnerSubset, EventObject> = [
+  InnerSubset extends unknown
+    ? NarrowedTransition<TreeOf<Machine>, InnerSubset, EventObject>
+    : never,
+] extends [InnerSubset]
+  ? false
+  : true;
+
+type ForwardedEventProperty<
+  Machine extends AnyMachine,
+  InnerSubset,
+  OuterStateCreator extends AnyStateCreator,
+  EventName extends EventNameOfMachine<Machine>,
+> =
+  EscapesSubset<
+    Machine,
+    InnerSubset,
+    ReturnType<Machine['event'][EventName]>
+  > extends true
+    ? ApiError<`Forwarding '${EventName}' can store an inner state outside the declared inner data`>
+    : ForwardedEventHandler<Machine, EventName, OuterStateCreator>;
+
 type ForwardedHandlers<
   Machine extends AnyMachine,
+  InnerSubset,
   OuterStateCreator extends AnyStateCreator,
 > = {
-  [EventName in EventNameOfMachine<Machine>]: ForwardedEventHandler<
+  [EventName in EventNameOfMachine<Machine>]: ForwardedEventProperty<
     Machine,
-    EventName,
-    OuterStateCreator
+    InnerSubset,
+    OuterStateCreator,
+    EventName
   >;
 };
 
 export const forwardEvents = <
   Machine extends AnyMachine,
   OuterStateCreator extends AnyStateCreator,
+  InnerSubset extends StateOf<Machine['state']>,
 >(
   innerMachine: Machine,
   outerStateCreator: OuterStateCreator,
-  selector: StateSelector<OuterStateCreator, Machine>,
+  selector: (data: DataFromCreator<OuterStateCreator>) => InnerSubset,
 ) => {
   const path = recordSelectorPath(selector);
   const createHandler = makeEventHandlerCreator(
@@ -92,5 +122,5 @@ export const forwardEvents = <
       eventName,
       createHandler(eventCreator as Machine['event'][string]),
     ]),
-  ) as ForwardedHandlers<Machine, OuterStateCreator>;
+  ) as ForwardedHandlers<Machine, InnerSubset, OuterStateCreator>;
 };

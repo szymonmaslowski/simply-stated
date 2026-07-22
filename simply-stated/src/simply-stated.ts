@@ -271,16 +271,66 @@ type ValidateEventPayloadsConsistency<Tree> = {
   };
 };
 
+type HandlerReturn<Handler> = Handler extends (...args: any) => infer Result
+  ? Result
+  : never;
+
+type ResolveCrossStateTransition<
+  Tree,
+  EventName extends string,
+  PassThrough,
+> = '*' extends keyof Tree
+  ? EventName extends keyof NonNullable<Tree['*']>
+    ? HandlerReturn<NonNullable<Tree['*']>[EventName]>
+    : PassThrough
+  : PassThrough;
+
+type ResolveTransitionResult<
+  Tree,
+  StateName extends string,
+  EventName extends string,
+  PassThrough,
+> = StateName extends keyof Tree
+  ? EventName extends keyof NonNullable<Tree[StateName]>
+    ? HandlerReturn<NonNullable<Tree[StateName]>[EventName]>
+    : ResolveCrossStateTransition<Tree, EventName, PassThrough>
+  : ResolveCrossStateTransition<Tree, EventName, PassThrough>;
+
+export type NarrowedTransition<Tree, InputState, InputEvent> =
+  InputState extends { name: infer StateName extends string }
+    ? InputEvent extends { type: infer EventName extends string }
+      ? ResolveTransitionResult<Tree, StateName, EventName, InputState>
+      : never
+    : never;
+
+declare const machineTree: unique symbol;
+
+export type TreeOf<Machine> = Machine extends {
+  readonly [machineTree]?: infer Tree;
+}
+  ? Tree
+  : never;
+
 type Machine<
   StateCreators extends readonly AnyStateCreator[],
   Tree,
 > = Simplify<{
   event: EventCreatorsMap<Tree>;
   state: StateCreatorsMap<StateCreators>;
-  transition: (
-    state: StateType<StateCreators>,
-    event: EventType<Tree>,
-  ) => StateType<StateCreators>;
+  readonly [machineTree]?: Tree;
+  transition: {
+    <
+      const InputState extends StateType<StateCreators>,
+      const InputEvent extends EventType<Tree>,
+    >(
+      state: InputState,
+      event: InputEvent,
+    ): NarrowedTransition<Tree, InputState, InputEvent>;
+    (
+      state: StateType<StateCreators>,
+      event: EventType<Tree>,
+    ): StateType<StateCreators>;
+  };
 }>;
 
 type CreateMachineOptions<
@@ -449,7 +499,11 @@ export const combineStates = <
       return currentState;
     };
 
-    return { event: eventCreatorsMap, state: stateCreatorsMap, transition };
+    return {
+      event: eventCreatorsMap,
+      state: stateCreatorsMap,
+      transition: transition as Machine<StateCreators, Tree>['transition'],
+    };
   };
 
   return { state: stateCreatorsMap, createMachine };
@@ -461,4 +515,5 @@ export type AnyMachine = {
   event: Record<string, (...args: any) => { type: string }>;
   state: Record<string, AnyStateCreator>;
   transition: (state: any, event: any) => AnyState;
+  readonly [machineTree]?: unknown;
 };
