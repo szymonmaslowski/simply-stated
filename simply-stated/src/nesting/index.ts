@@ -1,1 +1,5 @@
-export { forwardEvents } from './nesting';
+export {
+  forwardCollectionEvent,
+  forwardEvents,
+  type StateCollection,
+} from './nesting';

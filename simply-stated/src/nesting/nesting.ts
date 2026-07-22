@@ -3,6 +3,7 @@
 import { getAtPath, setAtPath } from '../path';
 import type {
   AnyMachine,
+  AnyState,
   AnyStateCreator,
   ApiError,
   EventPayloadOf,
@@ -124,3 +125,127 @@ export const forwardEvents = <
     ]),
   ) as ForwardedHandlers<Machine, InnerSubset, OuterStateCreator>;
 };
+
+type CollectionOf<Machine extends AnyMachine> = Record<
+  string,
+  StateOf<Machine['state']>
+>;
+
+type ElementOf<Collection> = Collection[keyof Collection];
+
+// A collection-forwarded handler mirrors a `forwardEvents` handler but addresses
+// one element by id, so the id is folded into the payload: `{ id }` for a
+// payload-less inner event, `{ id, payload }` otherwise.
+type CollectionEventPayload<
+  Machine extends AnyMachine,
+  EventName extends EventNameOfMachine<Machine>,
+  Collection,
+> = [EventPayloadOf<Machine['event'][EventName]>] extends [never]
+  ? { id: keyof Collection }
+  : {
+      id: keyof Collection;
+      payload: EventPayloadOf<Machine['event'][EventName]>;
+    };
+
+type CollectionForwardedProperty<
+  Machine extends AnyMachine,
+  Collection,
+  OuterStateCreator extends AnyStateCreator,
+  EventName extends EventNameOfMachine<Machine>,
+> =
+  EscapesSubset<
+    Machine,
+    ElementOf<Collection>,
+    ReturnType<Machine['event'][EventName]>
+  > extends true
+    ? ApiError<`Forwarding '${EventName}' can store an inner state outside the declared element type`>
+    : (
+        data: DataFromCreator<OuterStateCreator>,
+        payload: CollectionEventPayload<Machine, EventName, Collection>,
+      ) => ReturnType<OuterStateCreator>;
+
+type CollectionForwardedHandlers<
+  Machine extends AnyMachine,
+  Collection,
+  OuterStateCreator extends AnyStateCreator,
+> = {
+  [EventName in EventNameOfMachine<Machine>]: CollectionForwardedProperty<
+    Machine,
+    Collection,
+    OuterStateCreator,
+    EventName
+  >;
+};
+
+// A separate helper rather than folding collection support into `forwardEvents`
+// (review item 4): the return shape can be discriminated at the type level from
+// the selector, but the runtime handler cannot — a single-element write and an
+// id-addressed collection write are different operations, and nothing in the
+// recorded selector path tells them apart at call time. Keeping them separate
+// avoids a runtime payload-shape sniff; the two share the Check A machinery.
+export const forwardCollectionEvent = <
+  Machine extends AnyMachine,
+  OuterStateCreator extends AnyStateCreator,
+  Collection extends CollectionOf<Machine>,
+>(
+  innerMachine: Machine,
+  outerStateCreator: OuterStateCreator,
+  selector: (data: DataFromCreator<OuterStateCreator>) => Collection,
+) => {
+  const path = recordSelectorPath(selector);
+
+  const createHandler =
+    (eventCreator: Machine['event'][string]) =>
+    (data: DataFromCreator<OuterStateCreator>, payload: any) => {
+      const collection = getAtPath<Record<string, AnyState>>(data, path);
+      const currentElement = collection[payload.id];
+      if (!currentElement) return outerStateCreator(data);
+
+      const nextElement = innerMachine.transition(
+        currentElement,
+        eventCreator(payload.payload),
+      );
+      return writeNestedState(outerStateCreator, data, path, {
+        ...collection,
+        [payload.id]: nextElement,
+      });
+    };
+
+  return Object.fromEntries(
+    Object.entries(innerMachine.event).map(([eventName, eventCreator]) => [
+      eventName,
+      createHandler(eventCreator as Machine['event'][string]),
+    ]),
+  ) as CollectionForwardedHandlers<Machine, Collection, OuterStateCreator>;
+};
+
+type StatesOf<StateMap extends Record<string, AnyStateCreator>> = ReturnType<
+  StateMap[keyof StateMap]
+>;
+
+type DataOf<StateMap extends Record<string, AnyStateCreator>> =
+  StatesOf<StateMap> extends { data: infer Data } ? Data : never;
+
+type TypeAtPath<
+  Source,
+  Path extends string,
+> = Path extends `${infer Head}.${infer Rest}`
+  ? Head extends keyof Source
+    ? TypeAtPath<Source[Head], Rest>
+    : never
+  : Path extends keyof Source
+    ? Source[Path]
+    : never;
+
+// `StateCollection<typeof machine.state>` → an id-keyed map of the machine's
+// states; the optional dot-path names where each state's id lives in its data,
+// keeping a literal-union id literal (`StateCollection<S, 'id'>`).
+export type StateCollection<
+  StateMap extends Record<string, AnyStateCreator>,
+  IdPath extends string | undefined = undefined,
+> = [IdPath] extends [string]
+  ? Record<
+      TypeAtPath<DataOf<StateMap>, IdPath> & PropertyKey,
+      StatesOf<StateMap>
+    >
+  : Record<string, StatesOf<StateMap>>;
