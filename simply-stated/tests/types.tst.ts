@@ -239,8 +239,8 @@ test('name discriminator narrows the state union', () => {
 });
 
 test('is() narrows the state union', () => {
-  const { state, transition, event } = demoMachine;
-  const currentState = transition(state.Closed(), event.reset());
+  const { state } = demoMachine;
+  const currentState = null as unknown as StateOf<typeof demoMachine.state>;
   if (is(currentState, state.Open)) {
     expect(currentState.name).type.toBe<'Open'>();
     expect(currentState.data).type.toBe<{ accountId: string }>();

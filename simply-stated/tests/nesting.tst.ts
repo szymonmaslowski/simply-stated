@@ -14,6 +14,7 @@ import {
   is,
   type StateOf,
 } from '../src';
+import type { ApiError } from '../src/simply-stated';
 
 const innerMachine = combineStates(defineState('X', 'Y')).createMachine(
   state => ({
@@ -68,4 +69,71 @@ test('selector must return the inner machine state', () => {
       ...forwardEvents(innerMachine, state.Outer, d => d.other),
     },
   }));
+});
+
+const fetchMachine = combineStates(
+  defineState('Idle'),
+  defineState('Fetching').withData<{ query: string }>(),
+  defineState('Success').withData<{ query: string; value: string }>(),
+  defineState('Failure').withData<{ query: string; error: string }>(),
+).createMachine(state => ({
+  Idle: { fetch: (_, payload: { query: string }) => state.Fetching(payload) },
+  Fetching: {
+    resolved: (data, value: string) => state.Success({ ...data, value }),
+    rejected: (data, error: string) => state.Failure({ ...data, error }),
+  },
+  Success: { refetch: ({ query }) => state.Fetching({ query }) },
+  Failure: { retry: ({ query }) => state.Fetching({ query }) },
+}));
+
+type LoadingFetch = StateOf<typeof fetchMachine.state, 'Fetching' | 'Failure'>;
+
+test('a forwarded event that stays within the pinned subset is a handler', () => {
+  const { createMachine } = combineStates(
+    defineState('Loading').withData<{ fetchingState: LoadingFetch }>(),
+  );
+  createMachine(state => ({
+    Loading: {
+      searchFailed: forwardEvents(
+        fetchMachine,
+        state.Loading,
+        data => data.fetchingState,
+      ).rejected,
+    },
+  }));
+});
+
+test('a forwarded event that escapes the pinned subset is an ApiError property', () => {
+  const { state } = combineStates(
+    defineState('Loading').withData<{ fetchingState: LoadingFetch }>(),
+  );
+  const handlers = forwardEvents(
+    fetchMachine,
+    state.Loading,
+    data => data.fetchingState,
+  );
+  expect(handlers.resolved).type.toBe<
+    ApiError<`Forwarding 'resolved' can store an inner state outside the declared inner data`>
+  >();
+  expect(handlers.rejected).type.not.toBe<
+    ApiError<`Forwarding 'rejected' can store an inner state outside the declared inner data`>
+  >();
+});
+
+test('spreading a map whose events can escape the pinned subset is rejected', () => {
+  const { createMachine } = combineStates(
+    defineState('Loading').withData<{ fetchingState: LoadingFetch }>(),
+  );
+  createMachine(
+    // @ts-expect-error is not assignable to parameter of type
+    state => ({
+      Loading: {
+        ...forwardEvents(
+          fetchMachine,
+          state.Loading,
+          data => data.fetchingState,
+        ),
+      },
+    }),
+  );
 });
