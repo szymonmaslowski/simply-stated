@@ -37,13 +37,12 @@ use a [manual transition](#manual-transition).
 
 When an outer state pins its inner state to a subset
 (`StateOf<typeof fetchMachine.state, 'Fetching' | 'Failure'>`), `forwardEvents`
-checks every forwarded event against that subset and rejects two cases at compile
-time with a branded `ApiError<Message>` (see
+checks each forwarded event against that subset. Two cases are rejected with a
+branded `ApiError<Message>` (see
 [compile-time rejections](../../../API_REFERENCE.md#reserved-names--compile-time-rejections)).
 
-**Unexpected target state.** The event moves a pinned inner state _out_ of the
-declared subset. Storing that result would break the outer state's own data type,
-so it is rejected:
+**Unexpected target state.** The event moves a pinned state out of the subset. The
+stored result would violate the outer state's declared data type. Rejected:
 
 ```typescript
 defineState('Loading').withData<{
@@ -57,8 +56,8 @@ Loading: {
 }
 ```
 
-**Dead forward.** No pinned state handles the event, so it would always be a
-no-op — almost certainly a mistake, so it is rejected:
+**Dead forward.** No pinned state handles the event. The forward is a permanent
+no-op. Rejected:
 
 ```typescript
 Loading: {
@@ -68,10 +67,10 @@ Loading: {
 }
 ```
 
-Both surface at the offending event when you pick a handler, or at the state when
-you spread the whole map. An event that stays within the subset — moving between
-pinned states or self-transitioning — is a normal handler. With the full inner
-state union (no pinning) nothing escapes and every event is forwardable.
+An error surfaces at the picked handler, or at the state for a spread map. An
+event that keeps the inner state inside the subset — a move between pinned states,
+or a self-transition — is a normal handler. Without pinning, on the full inner
+state union, no event escapes and every event forwards.
 
 ## Manual transition
 

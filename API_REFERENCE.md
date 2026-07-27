@@ -230,12 +230,11 @@ currentState = transition(currentState, event.started());
 // → { name: 'Listening', data: Date }
 ```
 
-**Narrowed return.** Called with a **literal** state and event — the objects
-straight from `state.*` / `event.*` — the return type narrows to that handler's
-specific result instead of the whole state union. An event the state doesn't
-handle passes the input state through (step 3), so the narrowed type includes it.
-**Wide or union** arguments — as the Redux Toolkit adapters dispatch over every
-event key — collapse back to the full state union.
+**Narrowed return.** Given a **literal** state and event (the objects from
+`state.*` / `event.*`), the return type is that handler's specific result, not the
+whole state union. An event the state does not handle returns the input state
+unchanged (step 3); the narrowed type includes it. **Wide or union** arguments —
+the shape the Redux Toolkit adapters dispatch — return the full state union.
 
 ```typescript
 transition(state.Idle(), event.started());
