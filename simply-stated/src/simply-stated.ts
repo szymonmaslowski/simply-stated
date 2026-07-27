@@ -64,13 +64,15 @@ export type AnyStateCreator = StateCreator<string, any>;
 
 export type AnyState = ReturnType<StateCreator<string, any>>;
 
-export type AnyMachine = {
-  event: Record<string, (...args: any) => { type: string }>;
-  state: Record<string, AnyStateCreator>;
-  transition: ((state: any, event: any) => AnyState) & {
-    readonly [machineTree]?: unknown;
-  };
-};
+export type AnyMachine = Tagged<
+  {
+    event: Record<string, (...args: any) => { type: string }>;
+    state: Record<string, AnyStateCreator>;
+    transition: (state: any, event: any) => AnyState;
+  },
+  'MachineTree',
+  unknown
+>;
 
 type StateCreatorsFromDefinitions<
   Definitions extends readonly AnyStateDefinition[],
@@ -326,34 +328,35 @@ export type NarrowedTransition<Tree, InputState, InputEvent> = Simplify<
     : never
 >;
 
-declare const machineTree: unique symbol;
+// The transition tree is embedded as tag metadata on the machine, so it never
+// appears as a real property (invisible when destructuring `{ state, event,
+// transition }`) yet stays recoverable via `TreeOf` for the nesting helpers.
+export type TreeOf<Machine extends AnyMachine> = GetTagMetadata<
+  Machine,
+  'MachineTree'
+>;
 
-export type TreeOf<Machine> = Machine extends {
-  transition: { readonly [machineTree]?: infer Tree };
-}
-  ? Tree
-  : never;
-
-type Machine<
-  StateCreators extends readonly AnyStateCreator[],
-  Tree,
-> = Simplify<{
-  event: EventCreatorsMap<Tree>;
-  state: StateCreatorsMap<StateCreators>;
-  transition: {
-    <
-      const InputState extends StateType<StateCreators>,
-      const InputEvent extends EventType<Tree>,
-    >(
-      state: InputState,
-      event: InputEvent,
-    ): NarrowedTransition<Tree, InputState, InputEvent>;
-    (
-      state: StateType<StateCreators>,
-      event: EventType<Tree>,
-    ): StateType<StateCreators>;
-  } & { readonly [machineTree]?: Tree };
-}>;
+type Machine<StateCreators extends readonly AnyStateCreator[], Tree> = Tagged<
+  Simplify<{
+    event: EventCreatorsMap<Tree>;
+    state: StateCreatorsMap<StateCreators>;
+    transition: {
+      <
+        const InputState extends StateType<StateCreators>,
+        const InputEvent extends EventType<Tree>,
+      >(
+        state: InputState,
+        event: InputEvent,
+      ): NarrowedTransition<Tree, InputState, InputEvent>;
+      (
+        state: StateType<StateCreators>,
+        event: EventType<Tree>,
+      ): StateType<StateCreators>;
+    };
+  }>,
+  'MachineTree',
+  Tree
+>;
 
 type CreateMachineOptions<
   StateCreators extends readonly AnyStateCreator[],
@@ -524,8 +527,8 @@ export const combineStates = <
     return {
       event: eventCreatorsMap,
       state: stateCreatorsMap,
-      transition: transition as Machine<StateCreators, Tree>['transition'],
-    };
+      transition,
+    } as Machine<StateCreators, Tree>;
   };
 
   return { state: stateCreatorsMap, createMachine };

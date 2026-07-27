@@ -230,6 +230,21 @@ currentState = transition(currentState, event.started());
 // → { name: 'Listening', data: Date }
 ```
 
+**Narrowed return.** Called with a **literal** state and event — the objects
+straight from `state.*` / `event.*` — the return type narrows to that handler's
+specific result instead of the whole state union. An event the state doesn't
+handle passes the input state through (step 3), so the narrowed type includes it.
+**Wide or union** arguments — as the Redux Toolkit adapters dispatch over every
+event key — collapse back to the full state union.
+
+```typescript
+transition(state.Idle(), event.started());
+// → { name: 'Listening'; data: Date }   (narrowed)
+
+transition(state.Idle(), event.stopped());
+// → { name: 'Idle' }                     ('stopped' unhandled → input unchanged)
+```
+
 ### Disallowed transitions
 
 An event with no handler in the current state and no `'*'` handler is a
@@ -386,11 +401,13 @@ Invalid usage is rejected at compile time through a branded `ApiError<Message>`
 type. A type error carrying one of the messages below is the API rejecting the
 usage **by design** — not a bug in your types.
 
-| Usage                                                         | Message                                     | Rejected              |
-| ------------------------------------------------------------- | ------------------------------------------- | --------------------- |
-| `'*'` as a state name                                         | `'*' is reserved for cross-state events`    | runtime **and** types |
-| Same state name twice across `defineState` / `combineStates`  | `Duplicate state '<name>'`                  | runtime **and** types |
-| One event name whose handlers declare different payload types | `Mismatching payload types across handlers` | types only            |
+| Usage                                                                                                                 | Message                                                                        | Rejected              |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------- |
+| `'*'` as a state name                                                                                                 | `'*' is reserved for cross-state events`                                       | runtime **and** types |
+| Same state name twice across `defineState` / `combineStates`                                                          | `Duplicate state '<name>'`                                                     | runtime **and** types |
+| One event name whose handlers declare different payload types                                                         | `Mismatching payload types across handlers`                                    | types only            |
+| [Forwarding](simply-stated/src/nesting/README.md) an event that moves a pinned inner state out of its declared subset | `Forwarded event '<name>' transitions to an unexpected inner state (<states>)` | types only            |
+| [Forwarding](simply-stated/src/nesting/README.md) an event no pinned inner state handles                              | `Forwarded event '<name>' is not handled by any inner state (<states>)`        | types only            |
 
 ```typescript
 combineStates(defineState('Idle'), defineState('Idle').withData<Date>());
