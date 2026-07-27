@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type {
+  Flatten,
   GetTagMetadata,
   IsAny,
   IsEqual,
@@ -10,8 +11,9 @@ import type {
   UnionToIntersection,
 } from './type-utils';
 
+declare const apiError: unique symbol;
 export type ApiError<M extends string> = {
-  __message: M;
+  readonly [apiError]: M;
 };
 
 type StateDefinition<
@@ -60,6 +62,16 @@ type StateCreator<
 
 export type AnyStateCreator = StateCreator<string, any>;
 
+export type AnyState = ReturnType<StateCreator<string, any>>;
+
+export type AnyMachine = {
+  event: Record<string, (...args: any) => { type: string }>;
+  state: Record<string, AnyStateCreator>;
+  transition: ((state: any, event: any) => AnyState) & {
+    readonly [machineTree]?: unknown;
+  };
+};
+
 type StateCreatorsFromDefinitions<
   Definitions extends readonly AnyStateDefinition[],
 > = {
@@ -69,24 +81,6 @@ type StateCreatorsFromDefinitions<
       : never
     : never;
 };
-
-type AsTuple<
-  T extends readonly unknown[],
-  R extends readonly unknown[] = [],
-> = number extends T['length']
-  ? T
-  : R['length'] extends T['length']
-    ? R
-    : AsTuple<T, [...R, T[R['length']]]>;
-
-type Flatten<
-  T extends readonly unknown[],
-  R extends readonly unknown[] = [],
-> = T extends readonly [infer Head, ...infer Rest extends readonly unknown[]]
-  ? Head extends readonly unknown[]
-    ? Flatten<Rest, readonly [...R, ...AsTuple<Head>]>
-    : Flatten<Rest, readonly [...R, Head]>
-  : R;
 
 type ValidateNoStar<StateNames extends readonly string[]> = {
   [SN in keyof StateNames]: StateNames[SN] extends '*'
@@ -250,26 +244,95 @@ type AllPayloadsEqual<Tree, E extends string> = IsEqual<
   [EventPayloadFor<Tree, E>]
 >;
 
-type ValidateEventPayloadsConsistency<Tree> = {
-  [S in keyof Tree]: {
-    [E in keyof NonNullable<Tree[S]>]: E extends string
-      ? [EventPayloadFor<Tree, E>] extends [never]
-        ? NonNullable<Tree[S]>[E]
-        : IsUnion<ContributingStates<Tree, E>> extends false
+type ValidateEventPayloadsConsistency<
+  Tree,
+  S extends keyof Tree,
+  E extends keyof NonNullable<Tree[S]>,
+> = E extends string
+  ? [EventPayloadFor<Tree, E>] extends [never]
+    ? NonNullable<Tree[S]>[E]
+    : IsUnion<ContributingStates<Tree, E>> extends false
+      ? NonNullable<Tree[S]>[E]
+      : HasPayloadMixedWithAny<Tree, E> extends true
+        ? ApiError<MismatchErrorMessage>
+        : IsEqual<
+              EventPayloadFor<Tree, E>,
+              UnionToIntersection<EventPayloadFor<Tree, E>>
+            > extends true
           ? NonNullable<Tree[S]>[E]
-          : HasPayloadMixedWithAny<Tree, E> extends true
-            ? ApiError<MismatchErrorMessage>
-            : IsEqual<
-                  EventPayloadFor<Tree, E>,
-                  UnionToIntersection<EventPayloadFor<Tree, E>>
-                > extends true
-              ? NonNullable<Tree[S]>[E]
-              : AllPayloadsEqual<Tree, E> extends true
-                ? NonNullable<Tree[S]>[E]
-                : ApiError<MismatchErrorMessage>
-      : NonNullable<Tree[S]>[E];
+          : AllPayloadsEqual<Tree, E> extends true
+            ? NonNullable<Tree[S]>[E]
+            : ApiError<MismatchErrorMessage>
+  : NonNullable<Tree[S]>[E];
+
+type ValidateNestedTransitions<
+  Tree,
+  S extends keyof Tree,
+  E extends keyof NonNullable<Tree[S]>,
+> =
+  NonNullable<Tree[S]>[E] extends ApiError<any>
+    ? never
+    : NonNullable<Tree[S]>[E];
+
+type ValidateTree<Tree> = {
+  [S in keyof Tree]: {
+    [E in keyof NonNullable<Tree[S]>]: ValidateEventPayloadsConsistency<
+      Tree,
+      S,
+      E
+    > &
+      ValidateNestedTransitions<Tree, S, E>;
   };
 };
+
+type EventHandlerTargetState<Handler> = Handler extends (
+  ...args: any
+) => infer Result
+  ? Result
+  : never;
+
+type ResolveCrossStateTransitionTargetState<
+  Tree,
+  EventName extends string,
+> = '*' extends keyof Tree
+  ? EventName extends keyof NonNullable<Tree['*']>
+    ? EventHandlerTargetState<NonNullable<Tree['*']>[EventName]>
+    : never
+  : never;
+
+type ResolveTransitionTargetState<
+  Tree,
+  StateName extends string,
+  EventName extends string,
+> = StateName extends keyof Tree
+  ? EventName extends keyof NonNullable<Tree[StateName]>
+    ? EventHandlerTargetState<NonNullable<Tree[StateName]>[EventName]>
+    : ResolveCrossStateTransitionTargetState<Tree, EventName>
+  : ResolveCrossStateTransitionTargetState<Tree, EventName>;
+
+export type NarrowedTransition<Tree, InputState, InputEvent> = Simplify<
+  InputState extends { name: infer StateName extends string }
+    ? InputEvent extends { type: infer EventName extends string }
+      ? ResolveTransitionTargetState<
+          Tree,
+          StateName,
+          EventName
+        > extends infer ResolvedState
+        ? [ResolvedState] extends [never]
+          ? InputState
+          : ResolvedState
+        : never
+      : never
+    : never
+>;
+
+declare const machineTree: unique symbol;
+
+export type TreeOf<Machine> = Machine extends {
+  transition: { readonly [machineTree]?: infer Tree };
+}
+  ? Tree
+  : never;
 
 type Machine<
   StateCreators extends readonly AnyStateCreator[],
@@ -277,10 +340,19 @@ type Machine<
 > = Simplify<{
   event: EventCreatorsMap<Tree>;
   state: StateCreatorsMap<StateCreators>;
-  transition: (
-    state: StateType<StateCreators>,
-    event: EventType<Tree>,
-  ) => StateType<StateCreators>;
+  transition: {
+    <
+      const InputState extends StateType<StateCreators>,
+      const InputEvent extends EventType<Tree>,
+    >(
+      state: InputState,
+      event: InputEvent,
+    ): NarrowedTransition<Tree, InputState, InputEvent>;
+    (
+      state: StateType<StateCreators>,
+      event: EventType<Tree>,
+    ): StateType<StateCreators>;
+  } & { readonly [machineTree]?: Tree };
 }>;
 
 type CreateMachineOptions<
@@ -403,8 +475,8 @@ export const combineStates = <
       : TreeOrFactory,
   >(
     treeOrFactory: TreeOrFactory extends (...args: infer A) => infer T
-      ? (...args: A) => T & ValidateEventPayloadsConsistency<T>
-      : TreeOrFactory & ValidateEventPayloadsConsistency<TreeOrFactory>,
+      ? (...args: A) => ValidateTree<T> & T
+      : ValidateTree<TreeOrFactory> & TreeOrFactory,
     {
       onInvalidTransition = defaultInvalidTransitionLogger,
     }: CreateMachineOptions<StateCreators, Tree> = {},
@@ -449,16 +521,12 @@ export const combineStates = <
       return currentState;
     };
 
-    return { event: eventCreatorsMap, state: stateCreatorsMap, transition };
+    return {
+      event: eventCreatorsMap,
+      state: stateCreatorsMap,
+      transition: transition as Machine<StateCreators, Tree>['transition'],
+    };
   };
 
   return { state: stateCreatorsMap, createMachine };
-};
-
-export type AnyState = ReturnType<StateCreator<string, any>>;
-
-export type AnyMachine = {
-  event: Record<string, (...args: any) => { type: string }>;
-  state: Record<string, AnyStateCreator>;
-  transition: (state: any, event: any) => AnyState;
 };

@@ -231,7 +231,7 @@ test('EventOf with a name extracts the matching event shape', () => {
 });
 
 test('name discriminator narrows the state union', () => {
-  const s = null as unknown as StateOf<typeof demoMachine.state>;
+  const s = demoMachine.state.Closed() as StateOf<typeof demoMachine.state>;
   if (s.name === 'Open') {
     expect(s.name).type.toBe<'Open'>();
     expect(s.data).type.toBe<{ accountId: string }>();
@@ -239,8 +239,8 @@ test('name discriminator narrows the state union', () => {
 });
 
 test('is() narrows the state union', () => {
-  const { state, transition, event } = demoMachine;
-  const currentState = transition(state.Closed(), event.reset());
+  const { state } = demoMachine;
+  const currentState = state.Closed() as StateOf<typeof demoMachine.state>;
   if (is(currentState, state.Open)) {
     expect(currentState.name).type.toBe<'Open'>();
     expect(currentState.data).type.toBe<{ accountId: string }>();

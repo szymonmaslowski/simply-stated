@@ -69,3 +69,96 @@ test('selector must return the inner machine state', () => {
     },
   }));
 });
+
+const fetchMachine = combineStates(
+  defineState('Idle'),
+  defineState('Fetching').withData<{ query: string }>(),
+  defineState('Success').withData<{ query: string; value: string }>(),
+  defineState('Failure').withData<{ query: string; error: string }>(),
+).createMachine(state => ({
+  Idle: { fetch: (_, payload: { query: string }) => state.Fetching(payload) },
+  Fetching: {
+    resolved: (data, value: string) => state.Success({ ...data, value }),
+    rejected: (data, error: string) => state.Failure({ ...data, error }),
+  },
+  Success: { refetch: ({ query }) => state.Fetching({ query }) },
+  Failure: { retry: ({ query }) => state.Fetching({ query }) },
+}));
+
+test('a forwarded event that stays within the pinned subset is a handler', () => {
+  const { createMachine } = combineStates(
+    defineState('Loading').withData<{
+      fetchingState: StateOf<typeof fetchMachine.state, 'Fetching' | 'Failure'>;
+    }>(),
+  );
+  createMachine(state => ({
+    Loading: {
+      searchFailed: forwardEvents(
+        fetchMachine,
+        state.Loading,
+        data => data.fetchingState,
+      ).rejected,
+    },
+  }));
+});
+
+test('a forwarded event no target state handles is a dead-forward error', () => {
+  combineStates(
+    defineState('Loading').withData<{
+      fetchingState: StateOf<typeof fetchMachine.state, 'Fetching' | 'Failure'>;
+    }>(),
+  ).createMachine(state => ({
+    Loading: {
+      // @ts-expect-error ApiError<"Forwarded event 'refetch' is not handled by any inner state ('Fetching', 'Failure')">
+      refetch: forwardEvents(fetchMachine, state.Loading, d => d.fetchingState)
+        .refetch,
+    },
+  }));
+});
+
+test('spreading a map with a dead event is rejected at the state', () => {
+  combineStates(
+    defineState('Loading').withData<{
+      fetchingState: StateOf<typeof fetchMachine.state, 'Fetching' | 'Failure'>;
+    }>(),
+  ).createMachine(state => ({
+    // @ts-expect-error ApiError<"Forwarded event 'fetch' is not handled by any inner state ('Fetching', 'Failure')">
+    Loading: {
+      ...forwardEvents(fetchMachine, state.Loading, d => d.fetchingState),
+    },
+  }));
+});
+
+const linearMachine = combineStates(defineState('A', 'B', 'C')).createMachine(
+  state => ({
+    A: { toB: () => state.B() },
+    B: { toC: () => state.C() },
+    C: {},
+  }),
+);
+
+test('an escaping forwarded event errors at the event slot', () => {
+  combineStates(
+    defineState('Outer').withData<{
+      inner: StateOf<typeof linearMachine.state, 'A' | 'B'>;
+    }>(),
+  ).createMachine(state => ({
+    Outer: {
+      // @ts-expect-error ApiError<"Forwarded event 'toC' transitions to an unexpected inner state ('C')">
+      toC: forwardEvents(linearMachine, state.Outer, d => d.inner).toC,
+    },
+  }));
+});
+
+test('spreading a map whose event escapes the pinned subset is rejected at the state', () => {
+  combineStates(
+    defineState('Outer').withData<{
+      inner: StateOf<typeof linearMachine.state, 'A' | 'B'>;
+    }>(),
+  ).createMachine(state => ({
+    // @ts-expect-error ApiError<"Forwarded event 'toC' transitions to an unexpected inner state ('C')">
+    Outer: {
+      ...forwardEvents(linearMachine, state.Outer, d => d.inner),
+    },
+  }));
+});

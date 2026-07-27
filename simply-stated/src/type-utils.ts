@@ -1,7 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// Vendored from type-fest (https://github.com/sindresorhus/type-fest), which is
-// dual-licensed `(MIT OR CC0-1.0)`; these copies are taken under CC0-1.0.
+// Some of the utils has been vendored from type-fest (https://github.com/sindresorhus/type-fest),
+// which is dual-licensed `(MIT OR CC0-1.0)`; these copies are taken under CC0-1.0.
+
+export type AsTuple<
+  T extends readonly unknown[],
+  R extends readonly unknown[] = [],
+> = number extends T['length']
+  ? T
+  : R['length'] extends T['length']
+    ? R
+    : AsTuple<T, [...R, T[R['length']]]>;
+
+export type Flatten<
+  T extends readonly unknown[],
+  R extends readonly unknown[] = [],
+> = T extends readonly [infer Head, ...infer Rest extends readonly unknown[]]
+  ? Head extends readonly unknown[]
+    ? Flatten<Rest, readonly [...R, ...AsTuple<Head>]>
+    : Flatten<Rest, readonly [...R, Head]>
+  : R;
 
 export declare const tag: unique symbol;
 
@@ -72,3 +90,33 @@ export type UnionToIntersection<Union> = (
   ? // `& Union` keeps the result assignable back to the input union.
     Intersection & Union
   : never;
+
+type LastOfUnion<Union> =
+  UnionToIntersection<
+    Union extends unknown ? () => Union : never
+  > extends () => infer Last
+    ? Last
+    : never;
+
+// Union order is a TypeScript implementation detail, so the resulting order is
+// unspecified — fine for the human-read error messages this feeds.
+export type UnionToTuple<Union extends string, Result extends string[] = []> = [
+  Union,
+] extends [never]
+  ? Result
+  : LastOfUnion<Union> extends infer Last extends string
+    ? UnionToTuple<Exclude<Union, Last>, [Last, ...Result]>
+    : never;
+
+export type Join<
+  Parts extends readonly string[],
+  Separator extends string,
+  Wrapper extends string,
+> = Parts extends readonly [
+  infer Head extends string,
+  ...infer Rest extends readonly string[],
+]
+  ? Rest extends readonly []
+    ? `${Wrapper}${Head}${Wrapper}`
+    : `${Wrapper}${Head}${Wrapper}${Separator}${Join<Rest, Separator, Wrapper>}`
+  : '';

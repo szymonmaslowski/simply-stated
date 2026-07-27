@@ -4,17 +4,16 @@ import { getAtPath, setAtPath } from '../path';
 import type {
   AnyMachine,
   AnyStateCreator,
+  ApiError,
   EventPayloadOf,
+  NarrowedTransition,
   StateOf,
+  TreeOf,
 } from '../simply-stated';
+import type { Join, UnionToTuple } from '../type-utils';
 
 type DataFromCreator<StateCreator extends AnyStateCreator> =
   Parameters<StateCreator>[0];
-
-type StateSelector<
-  OuterStateCreator extends AnyStateCreator,
-  Machine extends AnyMachine,
-> = (data: DataFromCreator<OuterStateCreator>) => StateOf<Machine['state']>;
 
 type EventNameOfMachine<Machine extends AnyMachine> = keyof Machine['event'] &
   string;
@@ -61,24 +60,85 @@ type ForwardedEventHandler<
       payload: EventPayloadOf<Machine['event'][EventName]>,
     ) => ReturnType<OuterStateCreator>;
 
+type UnexpectedTargetStates<
+  Machine extends AnyMachine,
+  ExpectedInnerState,
+  EventObject,
+> = Exclude<
+  ExpectedInnerState extends unknown
+    ? NarrowedTransition<TreeOf<Machine>, ExpectedInnerState, EventObject>
+    : never,
+  ExpectedInnerState
+>;
+
+type TransitionsToUnexpectedState<
+  Machine extends AnyMachine,
+  ExpectedInnerState,
+  EventObject,
+> = [UnexpectedTargetStates<Machine, ExpectedInnerState, EventObject>] extends [
+  never,
+]
+  ? false
+  : true;
+
+type StateNamesOf<State> = State extends {
+  name: infer Name extends string;
+}
+  ? Name
+  : never;
+
+type EventsAllowedByState<Machine extends AnyMachine, ExpectedInnerState> =
+  StateNamesOf<ExpectedInnerState> extends infer StateName extends string
+    ?
+        | (StateName extends keyof TreeOf<Machine>
+            ? keyof NonNullable<TreeOf<Machine>[StateName]> & string
+            : never)
+        | ('*' extends keyof TreeOf<Machine>
+            ? keyof NonNullable<TreeOf<Machine>['*']> & string
+            : never)
+    : never;
+
+type PresentStateNames<State> = Join<
+  UnionToTuple<StateNamesOf<State>>,
+  ', ',
+  "'"
+>;
+
 type ForwardedHandlers<
   Machine extends AnyMachine,
   OuterStateCreator extends AnyStateCreator,
+  ExpectedInnerState,
 > = {
-  [EventName in EventNameOfMachine<Machine>]: ForwardedEventHandler<
+  [EventName in EventNameOfMachine<Machine>]: EventName extends EventsAllowedByState<
     Machine,
-    EventName,
-    OuterStateCreator
-  >;
+    ExpectedInnerState
+  >
+    ? TransitionsToUnexpectedState<
+        Machine,
+        ExpectedInnerState,
+        ReturnType<Machine['event'][EventName]>
+      > extends true
+      ? ApiError<`Forwarded event '${EventName}' transitions to an unexpected inner state (${PresentStateNames<
+          UnexpectedTargetStates<
+            Machine,
+            ExpectedInnerState,
+            ReturnType<Machine['event'][EventName]>
+          >
+        >})`> &
+          ((...args: any[]) => never)
+      : ForwardedEventHandler<Machine, EventName, OuterStateCreator>
+    : ApiError<`Forwarded event '${EventName}' is not handled by any inner state (${PresentStateNames<ExpectedInnerState>})`> &
+        ((...args: any[]) => never);
 };
 
 export const forwardEvents = <
   Machine extends AnyMachine,
   OuterStateCreator extends AnyStateCreator,
+  ExpectedInnerState extends StateOf<Machine['state']>,
 >(
   innerMachine: Machine,
   outerStateCreator: OuterStateCreator,
-  selector: StateSelector<OuterStateCreator, Machine>,
+  selector: (data: DataFromCreator<OuterStateCreator>) => ExpectedInnerState,
 ) => {
   const path = recordSelectorPath(selector);
   const createHandler = makeEventHandlerCreator(
@@ -92,5 +152,5 @@ export const forwardEvents = <
       eventName,
       createHandler(eventCreator as Machine['event'][string]),
     ]),
-  ) as ForwardedHandlers<Machine, OuterStateCreator>;
+  ) as ForwardedHandlers<Machine, OuterStateCreator, ExpectedInnerState>;
 };
