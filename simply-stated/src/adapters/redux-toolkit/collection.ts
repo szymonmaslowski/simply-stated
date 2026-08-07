@@ -9,7 +9,11 @@ import type {
   SliceSelectors,
 } from '@reduxjs/toolkit';
 import type { Simplify } from '../../type-utils';
-import type { AnyMachine, ApiError, EventPayloadOf } from '../../simply-stated';
+import type {
+  AnyMachine,
+  UsageGuardError,
+  EventPayloadOf,
+} from '../../simply-stated';
 import { getAtPath, setAtPath, splitPath } from '../../path';
 import { rebindUserSelectors } from './shared';
 import type { GenericReducer, NestAt, StateOfMachine } from './shared';
@@ -124,7 +128,7 @@ type EntityAdapterCRUDFunctions<
 >;
 
 type ForbidEventNameReducers<Machine extends AnyMachine> = {
-  [EventName in keyof Machine['event']]?: ApiError<`Reducer '${EventName & string}' clashes with machine event '${EventName & string}'`>;
+  [EventName in keyof Machine['event']]?: UsageGuardError<`Reducer '${EventName & string}' clashes with machine event '${EventName & string}'`>;
 };
 
 type CustomCaseReducers<EntitiesState> = Record<

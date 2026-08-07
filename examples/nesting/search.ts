@@ -46,13 +46,6 @@ const _searchMachine = combineStates(
         fetchingState,
         fetchMachine.event.fetch({ query }),
       );
-
-      // In case the transition was not successful
-      // we return the current state back
-      if (nextFetchingState.name !== 'Fetching') {
-        return state.Parametrising({ fetchingState, options });
-      }
-
       return state.Loading({ fetchingState: nextFetchingState });
     },
   },
@@ -73,17 +66,16 @@ const _searchMachine = combineStates(
       { fetchingState },
       value: EventOf<typeof fetchMachine.event, 'resolved'>['payload'],
     ) => {
-      const nextFetchingState = fetchMachine.transition(
-        fetchingState,
-        fetchMachine.event.resolved(value),
-      ) as StateOf<typeof fetchMachine.state, 'Success'>;
-
-      // In case the transition was not successful
+      // In case the fetching already failed
       // we return the current state back
-      if (nextFetchingState.name !== 'Success') {
+      if (fetchingState.name !== 'Fetching') {
         return state.Loading({ fetchingState });
       }
 
+      const nextFetchingState = fetchMachine.transition(
+        fetchingState,
+        fetchMachine.event.resolved(value),
+      );
       const result = JSON.parse(nextFetchingState.data.value);
       return state.ViewingResults({
         result,
