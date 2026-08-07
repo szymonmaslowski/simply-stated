@@ -83,13 +83,18 @@ In this setup impossible combinations does not exist. Downstream code that reads
 `ViewingResults` _knows_ the `fetch` succeeded and its data is there. The type
 is the guarantee.
 
-Two events are still forwarded — they stay inside `Fetching` and don't cross
-into another outer state:
+Two events are forwarded; both stay inside the pinned `{ Fetching | Failure }`
+subset:
 
 ```ts
-searchFailed: forwardEvents(fetchMachine, state.Fetching, d => d.fetchingState).rejected,
-retry:        forwardEvents(fetchMachine, state.Fetching, d => d.fetchingState).retry,
+searchFailed: forwardEvents(fetchMachine, state.Loading, d => d.fetchingState).rejected,
+retry:        forwardEvents(fetchMachine, state.Loading, d => d.fetchingState).retry,
 ```
+
+The pin is **compiler-enforced**. Forwarding `resolved` is rejected — it moves
+`Fetching → Success`, outside the subset. Any `fetch` event no pinned state
+handles is rejected too. See
+[compile-time checks on forwarding](../../simply-stated/src/nesting/README.md#compile-time-checks-on-forwarding).
 
 The other two events (`triggerSearch` and `searchSucceeded`) are manually wired,
 as they have some more job to do - they pass the data from the outer state to
