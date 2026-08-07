@@ -19,7 +19,7 @@ import {
 
 // 1. '*' is reserved for cross-state events and cannot be used as a state name.
 void (() => {
-  // @ts-expect-error '*' is reserved for cross-state events
+  // @ts-expect-error UsageGuardError<"'*' is reserved for cross-state events">
   defineState('*');
 });
 
@@ -42,7 +42,7 @@ void (() => {
 //    the first parameter mismatch when validating a rest-parameter call.
 void (() => {
   combineStates(
-    // @ts-expect-error Duplicate state 'A'
+    // @ts-expect-error UsageGuardError<"Duplicate state 'A'">
     defineState('A'),
     defineState('A'),
   );
@@ -51,7 +51,7 @@ void (() => {
 // 4. Same state repeated within a single defineState() call.
 //    The duplicate is reported at the combineStates() argument position.
 void (() => {
-  // @ts-expect-error Duplicate state 'A'
+  // @ts-expect-error UsageGuardError<"Duplicate state 'A'">
   combineStates(defineState('A', 'A'));
 });
 
@@ -59,7 +59,7 @@ void (() => {
 //    Detection ignores the data shape — it is based solely on the state name.
 void (() => {
   combineStates(
-    // @ts-expect-error Duplicate state 'Open'
+    // @ts-expect-error UsageGuardError<"Duplicate state 'Open'">
     defineState('Open'),
     defineState('Open').withData<{ secret: string }>(),
   );
@@ -85,11 +85,11 @@ void (() => {
   );
   createMachine({
     A: {
-      // @ts-expect-error Mismatching payload types across handlers
+      // @ts-expect-error UsageGuardError<"Mismatching payload types across handlers">
       click: (_, _p: string) => state.A(),
     },
     B: {
-      // @ts-expect-error Mismatching payload types across handlers
+      // @ts-expect-error UsageGuardError<"Mismatching payload types across handlers">
       click: (_, _p: number) => state.B(),
     },
   });
@@ -105,11 +105,11 @@ void (() => {
   );
   createMachine({
     A: {
-      // @ts-expect-error Mismatching payload types across handlers
+      // @ts-expect-error UsageGuardError<"Mismatching payload types across handlers">
       init: (_, _p: { id: string }) => state.A(),
     },
     '*': {
-      // @ts-expect-error Mismatching payload types across handlers
+      // @ts-expect-error UsageGuardError<"Mismatching payload types across handlers">
       init: (_p: { id: string; extra: number }) => state.A(),
     },
     B: {},
@@ -126,11 +126,11 @@ void (() => {
   createMachine({
     A: {
       // payload param has no annotation → implicit `any`
-      // @ts-expect-error Mismatching payload types across handlers
+      // @ts-expect-error UsageGuardError<"Mismatching payload types across handlers">
       click: (_, _p) => state.A(),
     },
     B: {
-      // @ts-expect-error Mismatching payload types across handlers
+      // @ts-expect-error UsageGuardError<"Mismatching payload types across handlers">
       click: (_, _p: number) => state.B(),
     },
   });
@@ -231,7 +231,7 @@ test('EventOf with a name extracts the matching event shape', () => {
 });
 
 test('name discriminator narrows the state union', () => {
-  const s = null as unknown as StateOf<typeof demoMachine.state>;
+  const s = demoMachine.state.Closed() as StateOf<typeof demoMachine.state>;
   if (s.name === 'Open') {
     expect(s.name).type.toBe<'Open'>();
     expect(s.data).type.toBe<{ accountId: string }>();
@@ -239,8 +239,8 @@ test('name discriminator narrows the state union', () => {
 });
 
 test('is() narrows the state union', () => {
-  const { state, transition, event } = demoMachine;
-  const currentState = transition(state.Closed(), event.reset());
+  const { state } = demoMachine;
+  const currentState = state.Closed() as StateOf<typeof demoMachine.state>;
   if (is(currentState, state.Open)) {
     expect(currentState.name).type.toBe<'Open'>();
     expect(currentState.data).type.toBe<{ accountId: string }>();
