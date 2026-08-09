@@ -7,7 +7,7 @@ export const fetchMachine = combineStates(
   defineState('Failure').withData<{ query: string; error: string }>(),
 ).createMachine(state => ({
   Idle: {
-    fetch: (_, paylaod: { query: string }) => state.Fetching(paylaod),
+    fetch: (_, payload: { query: string }) => state.Fetching(payload),
   },
   Fetching: {
     resolved: (data, value: string) => state.Success({ ...data, value }),

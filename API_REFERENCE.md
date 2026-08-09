@@ -17,8 +17,11 @@ import type { StateOf, EventOf, StateCreatorOf } from 'simply-stated';
   - [defineState](#definestate)
   - [combineStates](#combinestates)
 - [State creators map](#state-creators-map)
+  - [State creator](#state-creator)
 - [Event creators map](#event-creators-map)
+  - [Event creator](#event-creator)
 - [createMachine](#createmachine)
+  - [onInvalidTransition](#oninvalidtransition)
 - [StateMachineTree](#statemachinetree)
   - [State level](#state-level)
   - [Event level](#event-level)
@@ -39,7 +42,8 @@ import type { StateOf, EventOf, StateCreatorOf } from 'simply-stated';
   - [StateOf](#stateof)
   - [EventOf](#eventof)
   - [StateCreatorOf](#statecreatorof)
-- [Reserved names & compile-time rejections](#reserved-names--compile-time-rejections)
+- [Compile-time rejections](#compile-time-rejections)
+  - [UsageGuardError](#usageguarderror)
 
 ## Basic concepts
 
@@ -53,7 +57,7 @@ Describes a distinct condition or status that a system can exist in at any
 given moment. In simple words, a name for a unique situation.
 
 It is represented by an object with a **name** property. It may also carry
-a **data**.
+**data**.
 State is built by a [state creator](#state-creator).
 
 ```typescript
@@ -81,11 +85,11 @@ The `name` is a literal type, so a state union discriminates on it — that is w
 
 ### Event
 
-Describes an occurrence - what can happen in a given situation (state).
+Describes an occurrence — what can happen in a given situation (state).
 
 It is represented by an object with a **type** property. It may carry
 a **payload**.
-Event is built by an [event creator](#machineevent).
+Event is built by an [event creator](#event-creator).
 
 ```typescript
 type Event =
@@ -93,7 +97,7 @@ type Event =
       type: string;
     }
   | {
-      name: string;
+      type: string;
       payload: any;
     };
 
@@ -111,10 +115,10 @@ type Event =
 
 The change from one state to another in reaction to an event.
 
-A state machine restricts state changes by defining explicit transitions -
+A state machine restricts state changes by defining explicit transitions —
 ensuring a state can only move to specific, allowed target states.
 Transitions are defined via nested structure
-([StateMachineTree](#statemachinetree)) created during machine modeling.
+([StateMachineTree](#statemachinetree)) created during machine modelling.
 
 ```typescript
 // For state 'Idle', event 'started' transitions to state 'Running'
@@ -138,7 +142,7 @@ Defines one or more states of the same shape.
 - `stateNames` _\<string>_ One or more state names. All names given in a single
   call share the same data shape. At least one name is required. `'*'` is
   reserved for [cross-state events](#cross-state-events) and rejected at
-  runtime and on the type level — see [compile-time rejections](#reserved-names--compile-time-rejections).
+  runtime and on the type level — see [compile-time rejections](#compile-time-rejections).
 - `Data` is the type of the data carried by every `stateName` of
   particular `defineState`. Without `.withData()` the states carry no `data`
   property at all.
@@ -164,7 +168,7 @@ Combines state definitions of the [defineState](#definestate) into single map.
 
 - `stateDefinitionsTuples` _\<StateDefinitionsTuple[]>_ Tuples returned by
   [`defineState`](#definestate). A state name repeated across the definitions is
-  rejected at runtime and type level — see [compile-time rejections](#reserved-names--compile-time-rejections)
+  rejected at runtime and type level — see [compile-time rejections](#compile-time-rejections)
 - Returns:
   - `state` _\<[State creators map](#state-creators-map)>_
   - `createMachine` _\<[createMachine](#createmachine)>_
@@ -190,14 +194,14 @@ Produces [state](#state) object.
 - `data` _\<any>_
 - Returns: [state](#state) object.
 
-State creators build [state objects](#state) and carries the `stateName` property.
+State creators build [state objects](#state) and carry the `stateName` property.
 Creators of states defined without `.withData()` take no arguments, while
 creators of states with data take the data as their only argument.
 
 ```typescript
 // The same state creators are returned from `createMachine` and `combineStates`
 const { state } = combineStates(...);
-const { state } = createMachine(...);
+// const { state } = createMachine(...);
 
 state.Idle();
 // → { name: 'Idle' }
@@ -216,16 +220,16 @@ Map of event creators keyed by event name.
 Produces [event](#event) object.
 
 **() => { type }**<br />
-**(payload) => { name, payload }**
+**(payload) => { type, payload }**
 
-- `data` _\<any>_
+- `payload` _\<any>_
 - Returns: [event](#event) object.
 
 Event creators build an [event object](#event). Creators of events that
 carry payload take that payload as an argument, while creators for events
 without payload take no argument.
 
-Events and the Event creators map gets derived from every event key found in
+Events and the Event creators map are derived from every event key found in
 the [StateMachineTree](#statemachinetree),
 the [cross-state](#cross-state-events) group included.
 
@@ -234,8 +238,8 @@ const { event } = workerMachine;
 
 event.reset();
 // → { type: 'reset' }
-event.consumed({ id: '0', data: Buffer.from('data') });
-// → { type: 'consumed', payload: { id: '0', data: Buffer<...> } }
+event.jobAssigned({ id: '0', data: Buffer.from('data') });
+// → { type: 'jobAssigned', payload: { id: '0', data: Buffer<...> } }
 ```
 
 ## createMachine
@@ -246,7 +250,7 @@ Builds the actual state machine.
 **createMachine((state) => tree[, options]): Machine**
 
 - `tree` _\<[StateMachineTree](#statemachinetree)>_ Nested structure describing
-  behavior of the state machine.
+  behaviour of the state machine.
   - `state` _\<[State creators map](#state-creators-map)>_ The tree could be provided
     directly or as a factory receiving the [state creators map](#state-creators-map)
     - the same map as the one returned from the
@@ -271,7 +275,7 @@ Use it for logging (using own logger), telemetry, or throwing in strict/dev
 builds. Pass `() => {}` to silence it.
 
 **Default:** logs
-`Invalid transition: event 'consumed' not allowed in state 'Idle'` message via
+`Invalid transition: event 'picked' not allowed in state 'Idle'` message via
 `console.error`.
 
 ---
@@ -295,7 +299,7 @@ combineStates(
 
 ## StateMachineTree
 
-A nested object describing the state machine behavior. It has two levels of
+A nested object describing the state machine behaviour. It has two levels of
 nesting: **state level** and **event level**. The event-level specifies **event
 handlers**.
 
@@ -309,7 +313,7 @@ handlers**.
 
 ### State level
 
-The tree specifies a key per each defined state and requires all states to be
+The tree specifies a key for each defined state and requires all states to be
 specified. Each state key gets assigned an object listing its allowed events.
 
 There is also the optional `'*'` group for events available across all states
@@ -320,27 +324,27 @@ There is also the optional `'*'` group for events available across all states
 An object listing events available for a given state. Each event property name
 **becomes** the [event](#event)'s type (`started` → `{ type: 'started' }`).
 
-State is allowed to define no single event (`{}`), and if there are no
+A state may define no events at all (`{}`), and if there are no
 [Cross-state events](#cross-state-events) available, such state becomes a
-**final state** - there is no way out of it.
+**final state** — there is no way out of it.
 
 Each event property specifies its handler function.
 
 ### Event handler
 
-Event handlers compute the next state (and it's data) and return it using
+Event handlers compute the next state (and its data) and return it using
 [state creator](#state-creator). Returning the given state's own creator is
-called a **self transition** - in such case the state does not change (but it's
+called a **self transition** — in such case the state does not change (but its
 data can). By specifying an optional payload param, the event handler defines
 that [event](#event)'s payload's type. When omitted the event won't carry any
 payload.
 
 > ⚠️ The same event name may appear under several states, but all its handlers
 > must define **identical** payload type (or none) — a mismatch is a
-> [compile-time rejection](#reserved-names--compile-time-rejections).
+> [compile-time rejection](#compile-time-rejections).
 
 Handler's parameters vary depending on whether it is a **per-state handler** or
-a **cross-state handler** - cross-state handlers cannot read the state's data
+a **cross-state handler** — cross-state handlers cannot read the state's data
 (see [cross-state events](#cross-state-events)).
 
 #### Per-state handler
@@ -365,8 +369,7 @@ The optional, state-level `'*'` group defines events allowed in **any** state.
 Cross-state event handlers cannot read the state's data. The payload is
 therefore the **first** param, unlike per-state handlers.
 
-If particular state does not define any event, but the cross-state events
-are available, they are available in that state.
+A state that defines no events of its own still accepts the cross-state ones.
 
 A per-state handler for the same event name **wins** over the `'*'` one.
 
@@ -409,17 +412,17 @@ The [Event creators map](#event-creators-map).
 - `event` _\<[Event](#event)>_ The event to process
 - Returns: `nextState` _\<[State](#state)>_ The resulting state
 
-A reduce function. When executed, the target handler for provided event gets
+A reducer function. When executed, the target handler for provided event gets
 resolved based on `state.name` and `event.type` in the following
 order:
 
 1. the provided state's own handlers,
 2. the `'*'` group handlers,
-3. no handler available - the [onInvalidTransition](#createmachine) runs and
+3. no handler available — the [onInvalidTransition](#createmachine) runs and
    the **input state is returned unchanged**.
 
 ```typescript
-const { event, state, transition } = workerMachine;
+const { event, state, transition } = myMachine;
 
 const resultState = transition(state.Idle(), event.started());
 // → { name: 'Listening', data: Date }
@@ -430,8 +433,10 @@ const resultState = transition(state.Idle(), event.started());
 When supplying a state of specific type, e.g. created by the
 [state creator](#state-creator), or narrowed with the [StateOf](#stateof) type
 helper, the transition function is able to narrow the type of resulting state.
-If the supplied state was a full state union, the resulting state will also be
-a full state union.
+
+It narrows when **both** the state and the event are of a specific type. A union
+in either position widens the result — supplying the full state union gives back
+the full state union.
 
 In case of an [invalid transition](#invalid-transitions), the returned
 state is the unchanged input state, and so its type.
@@ -442,8 +447,8 @@ import { StateOf } from 'simply-stated';
 transition(state.Idle(), event.started());
 // → Listening (narrowed)
 
-transition(state.Idle(), event.stopped());
-// → Idle' ('stopped' unhandled → input unchanged)
+transition(state.Idle(), event.picked());
+// → Idle ('picked' is not handled in 'Idle' → input unchanged)
 
 const inputState = state.Idle() as StateOf<typeof state>;
 transition(inputState, event.started());
@@ -453,18 +458,20 @@ transition(inputState, event.started());
 ### Invalid transitions
 
 If the supplied transition params (state and event) do not form a transition
-(they don't mach any handler in the [StateMachineTree](#statemachinetree)),
+(they don't match any handler in the [StateMachineTree](#statemachinetree)),
 such transition attempt is invalid. In that case the
 [Machine.transition](#machinetransition) function returns the **same state
 object** unchanged and invokes [onInvalidTransition](#createmachine).
 
 ```typescript
-const next = workerMachine.transition(
-  workerMachine.state.Idle(),
-  // 'consumed' is only handled in 'Listening'
-  workerMachine.event.consumed(job),
+const idleState = myMachine.state.Idle();
+
+const next = myMachine.transition(
+  idleState,
+  // 'picked' is only handled in 'Queued'
+  myMachine.event.picked(),
 );
-// → next === idle (unchanged)
+// → next === idleState (the same object, unchanged)
 ```
 
 ## Helpers
@@ -474,13 +481,13 @@ const next = workerMachine.transition(
 A type guard, checking if supplied [state](#state) matches any of supplied
 [state creators](#state-creator).
 
-**is(state, ...stateCreators): bool**
+**is(state, ...stateCreators): boolean**
 
 - `state` _\<[State](#state)>_ The state to check
 - `stateCreators` _\<[State creator](#state-creator)>_ One or more state creators to check against
 - Returns: _\<boolean>_ Whether the state was matched
 
-It **narrows** the state union to the matched states. It's handy alternative
+It **narrows** the state union to the matched states. It's a handy alternative
 to manual state name checking, paying off when you compare against many states.
 
 ```typescript
@@ -489,7 +496,7 @@ import { is } from 'simply-stated';
 // if (currentState.name === 'Queued' || currentState.name === 'Processing') {
 if (is(currentState, state.Queued, state.Processing)) {
   // narrowed — both Queued and Processing states' data is a Job with id property
-  console.info(`Job ${currentState.data.id} already consumed.`);
+  console.info(`Job ${currentState.data.id} already assigned.`);
 }
 ```
 
@@ -505,7 +512,7 @@ the outer machine's events. Read more in the
 - `innerMachine` _\<[Machine](#the-machine-object)>_ The nested machine, whose
   state lives inside the outer state's `data`
 - `outerStateCreator` _\<[State creator](#state-creator)>_ Creator of the
-  outer state - the state where inner events are being forwarded.
+  outer state — the state where inner events are being forwarded.
 - `innerStateSelector` _\<[InnerStateSelector](#innerstateselector)>_ Locates
   the nested state inside the outer state's data.
 - Returns: `forwardedEvents` _\<Record<EventName, EventHandler>>_ One handler
@@ -547,7 +554,7 @@ combineStates(
 
 ### StateOf
 
-Extracts the State type - the entire union, or a subset.
+Extracts the State type — the entire union, or a subset.
 
 **StateOf\<StateCreatorsMap[, StateName]> = StateType**
 
@@ -570,7 +577,7 @@ type FinishedState = StateOf<typeof state, 'Processing' | 'Failed'>;
 
 ### EventOf
 
-Extracts the Event type - the entire union, or a subset.
+Extracts the Event type — the entire union, or a subset.
 
 **EventOf\<EventCreatorsMap[, EventName]> = EventType**
 
@@ -586,14 +593,14 @@ import type { EventOf } from 'simply-stated';
 const { event } = workerMachine;
 
 type AnyWorkerEvent = EventOf<typeof event>;
-// { type: 'started' } | { type: 'consumed', payload: Job } | ...
+// { type: 'started' } | { type: 'jobAssigned', payload: Job } | ...
 
-type ConsumedEvent = EventOf<typeof event, 'consumed'>;
+type JobAssignedEvent = EventOf<typeof event, 'jobAssigned'>;
 ```
 
 ### StateCreatorOf
 
-Extracts the StateCreator type - the entire union, or a subset.<br />
+Extracts the StateCreator type — the entire union, or a subset.<br />
 Like the [StateOf](#stateof), but returning StateCreator type instead of a State type.
 
 **StateCreatorOf\<StateCreatorsMap[, StateName]> = StateCreatorsUnion**
@@ -620,21 +627,26 @@ const carriesJob = (
 ## Compile-time rejections
 
 One of the biggest strengths of this library is that it clearly communicates
-any invalid usage via compile-time rejections through a `UsageGuardError<Message>`.
-This type error carrying one of the messages below is the API rejecting the
-usage **by design** — not a bug in your types.
+any invalid usage with type errors. Some of them will contain the
+`UsageGuardError<Message>` in the message (sometimes it might be buried under
+other less vocal messages). This type error carrying one of the messages below
+is the API rejecting the usage **by design** — not a bug in your types.
 
-### Reserved keyword used for state name in [defineState](#definestate)
+### UsageGuardError
+
+**Reserved keyword used for a state name**
+
+The `'*'` supplied as a state name to [defineState](#definestate).
 
 ```typescript
-// UsageGuardError<the `'*'` supplied as a state name>
+// UsageGuardError<'*' is reserved for cross-state events>
 defineState('*');
 ```
 
-### State name duplication
+**State name duplication**
 
 Duplication of the state name in [defineState](#definestate) or
-[combineStates](#combinestates)
+[combineStates](#combinestates).
 
 ```typescript
 combineStates(
@@ -644,65 +656,69 @@ combineStates(
 );
 ```
 
-### Event payload type mismatch
+**Event payload type mismatch**
 
-When handlers of the same event defined in different state have different
+When handlers of the same event defined in different states have different
 types of payload.
 
 ```typescript
 {
   Compiling: {
     // UsageGuardError<Mismatching payload types across handlers>
-    killed: (_, { exitCode: number }) => {/* ... */},
+    killed: (_, payload: { exitCode: number }) => {/* ... */},
   },
   Running: {
     // UsageGuardError<Mismatching payload types across handlers>
-    killed: (_, { exitCode: number, reason: string }) => {/* ... */},
+    killed: (_, payload: { exitCode: number, reason: string }) => {/* ... */},
   },
 }
 ```
 
-### Forwarded event not reachable
+**Forwarded event not reachable**
 
 When the nested state is narrowed to the subset for which forwarded event
 is not available.
 
 ```typescript
-// Nested machine
+// Nested machine (switcherMachine)
 {
-  On: { off: ... },
-  Off: { on: ... },
+  On: { off: /* ... */ },
+  Off: { on: /* ... */) },
 }
 
 // Parent machine
 defineState('Running').withData<{
-  switcher: StateOf<switcherMachine.state, 'On'>
+  switcher: StateOf<typeof switcherMachine.state, 'On'>;
 }>();
-...
+
 {
   // UsageGuardError<Forwarded event 'on' is not handled by any inner state ('On')>
-  Running: { on: forwardEvents(switcherMachine, ...).on },
+  Running: {
+    on: forwardEvents(switcherMachine, /* ... */).on,
+  },
 }
 ```
 
-### Forwarded event transitions out the defined state
+**Forwarded event transitions out of the defined state**
 
 When the nested state is narrowed to the subset and forwarded event transitions
-the nested state to the state which does not mach the subset.
+the nested state to the state which does not match the subset.
 
 ```typescript
-// Nested machine
+// Nested machine (switcherMachine)
 {
-  On: { lock: () => state.Locked },
+  On: { lock: () => state.Locked() },
 }
 
 // Parent machine
 defineState('Running').withData<{
-  switcher: StateOf<switcherMachine.state, 'On'>
+  switcher: StateOf<typeof switcherMachine.state, 'On'>;
 }>();
-...
+
 {
   // UsageGuardError<Forwarded event 'lock' transitions to an unexpected inner state ('Locked')>
-  Running: { lock: forwardEvents(switcherMachine, ...).lock },
+  Running: {
+    lock: forwardEvents(switcherMachine, /* ... */).lock,
+  },
 }
 ```

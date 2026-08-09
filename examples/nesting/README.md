@@ -27,11 +27,12 @@ Closed: {
 the door adds its own `opened` event. The lock only exists while closed — the outer
 state gates the inner one.
 
-## [player.ts](./player.ts) — runs two inner machines parallelly
+## [player.ts](./player.ts) — runs two inner machines in parallel
 
-A player (`Paused` / `Playing`) nests **two** independent `toggleMachine`s —
-`fullScreen` and `muted`. Instead of spreading, it picks individual handlers off
-the returned map and renames them to semantic outer events:
+A player nests **two** independent `toggleMachine`s as `fullScreen` and `muted`
+in the data of `Paused` and `Playing` states. Instead of spreading, it picks
+individual handlers off the returned map and renames them to semantic outer
+events:
 
 ```ts
 const mute = forwardEvents(toggleMachine, stateCreator, data => data.muted);
@@ -40,16 +41,16 @@ mute:   mute.on,
 unmute: mute.off,
 ```
 
-The selector picks the nested toggle (`muted` or `fullScreen`); the accessed
-property (`on` / `off`) picks the inner machine event.
-The `makeSharedEvents(stateCreator)` builds the four handlers once and both
-states spread them, so mute / fullscreen work whether playing or paused.
+The selector picks one of the two nested toggle machines (`muted` or
+`fullScreen`). The accessed property (`on` / `off`) picks the inner machine
+event. The `makeSharedEvents(stateCreator)` builds the four handlers once and
+both states spread them, so mute / fullscreen work whether playing or paused.
 
-## [search.ts](./search.ts) — runs inner machine parallelly with strict states mapping
+## [search.ts](./search.ts) — runs inner machine in parallel with strict states mapping
 
 In other examples nested machines could be in _any_ of their states while held
-by the outer state. This example does the opposite: **each outer state pins the inner
-machine to a specific subset of its states.**:
+by the outer state. This example does the opposite: **each outer state pins the
+inner machine to a specific subset of its states.**
 
 ```ts
 defineState('Parametrising').withData<{
@@ -79,7 +80,7 @@ without advancing the `search`, and you can't advance the search without having
 `fetch` in an expected state — the compiler rejects
 `state.ViewingResults({ fetchingState: idleFetchState })`.
 
-In this setup impossible combinations does not exist. Downstream code that reads
+In this setup impossible combinations do not exist. Downstream code that reads
 `ViewingResults` _knows_ the `fetch` succeeded and its data is there. The type
 is the guarantee.
 
@@ -92,14 +93,14 @@ retry:        forwardEvents(fetchMachine, state.Loading, d => d.fetchingState).r
 ```
 
 The pin is **compiler-enforced**. Forwarding `resolved` is rejected — it moves
-`Fetching → Success`, outside the subset. Any `fetch` event no pinned state
+`Fetching → Success`, outside the subset. An event that none of the pinned states
 handles is rejected too. See
 [compile-time checks on forwarding](../../simply-stated/src/nesting/README.md#compile-time-checks-on-forwarding).
 
 The other two events (`triggerSearch` and `searchSucceeded`) are manually wired,
-as they have some more job to do - they pass the data from the outer state to
-the inner state and guard the `fetch` machine transition and decide the next
-outer state based on it.
+as they have some more job to do. They pass the data from the outer state to the
+inner one, narrow the inner state before transitioning it (which narrows the
+transition result in turn), and decide the next outer state based on it.
 
 Summarising:
 

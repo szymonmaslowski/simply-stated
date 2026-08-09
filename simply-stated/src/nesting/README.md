@@ -36,16 +36,16 @@ combineStates(
 ```
 
 Forwarded events keep the outer state unchanged. If you want the event to also
-modify the other data, make a [manual transition](#manual-transition) instead.
+modify other data, make a [manual transition](#manual-transition) instead.
 
 ## Compile-time checks on forwarding
 
-The `forwardEvents` validates forwarded events against the nested state type.
+`forwardEvents` validates forwarded events against the nested state type.
 When an outer state defines its nested state as a subset
 (`StateOf<typeof myMachine.state, 'A' | 'B'>`), then the
 `forwardEvents` checks each forwarded event against that subset and raises a
 type level error (see
-[compile-time rejections](../../../API_REFERENCE.md#reserved-names--compile-time-rejections)).
+[compile-time rejections](../../../API_REFERENCE.md#compile-time-rejections)).
 
 Given
 
@@ -69,6 +69,9 @@ Loading: {
 }
 ```
 
+The message names the **inner** event (`resolved`), not the outer key the handler
+is wired to (`searchDone`).
+
 **Dead forward.** No state of the subset allows for the event. The forward is
 a permanent no-op.
 
@@ -86,15 +89,20 @@ state union, any forwarded event is valid.
 ## Manual transition
 
 When simple `forwardEvents` doesn't fit your case, you can transition the nested
-machine manually by running inner machine's `transition` function in the outer
-handler, read the resulting inner machine state, and build whatever next outer
-state you want — including transitioning to a _different_ outer state.
+machine manually: run the inner machine's `transition` function in the outer
+handler, read the resulting inner state, and build whatever next outer state you
+want — including transitioning to a _different_ outer state.
 
 ```typescript
-Fetching: {
+Loading: {
   // Transition the nested fetch machine, then branch the outer machine to a
   // different state built from the inner result.
   searchSucceeded: ({ fetchingState }, value: string) => {
+    // Narrowing the transition input state narrows the transition result
+    if (fetchingState.name !== 'Fetching') {
+      return state.Loading({ fetchingState });
+    }
+
     const nextFetchingState = fetchMachine.transition(
       fetchingState,
       fetchMachine.event.resolved(value),

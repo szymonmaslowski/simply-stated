@@ -1,16 +1,16 @@
 # Simply Stated
 
-Strongly typed, declarative utility for state machine modeling,
+Strongly typed, declarative utility for state machine modelling
 that **integrates with your existing state management solution**.
 
-Best class dev experience with **compile-time guards** and simple
+Best-in-class dev experience with **compile-time guards** and a simple
 and powerful API.
 
 ```bash
 npm install simply-stated
 ```
 
-New to the state machines? Get familiar reading
+New to state machines? Get familiar reading
 [basic concepts](./API_REFERENCE.md#basic-concepts).
 
 ---
@@ -20,9 +20,9 @@ Simply Stated is a _state ~~management~~ **description**_ tool.
 Having your state management solution of choice in place,
 use Simply Stated to:
 
-1. **Describe** (model) your state shape and behavior as a state-machine.
-2. Drive it using your state management solution - manually or using one of
-   available adapters that do it for you.
+1. **Describe** (model) your state shape and behaviour as a state-machine.
+2. Drive it using your state management solution — manually or using one of
+   the available adapters that do it for you.
 
 See [adapters](#adapters) for popular state management libraries.
 
@@ -60,9 +60,11 @@ const doorMachine = combineStates(
 const { event, state, transition } = doorMachine;
 
 const stateOpen = state.Open();
-const stateClosed = transition(currentState, event.close(Date.now()));
-const stateLocked = transition(currentState, event.close(Date.now()));
+const stateClosed = transition(stateOpen, event.close(Date.now()));
+const stateLocked = transition(stateClosed, event.lock());
 
+// Each resulting state is narrowed to the state that particular transition
+// leads to, so the 'Locked' data is reachable without any check.
 console.info('Closed timestamp:', stateLocked.data.closedTimestamp);
 ```
 
@@ -71,7 +73,7 @@ console.info('Closed timestamp:', stateLocked.data.closedTimestamp);
 The below walkthrough explains the Simply Stated usage in action. For the full
 API listing, head to the [API Reference](./API_REFERENCE.md) page.
 
-### Subject: modeling an abstract processing worker.
+### Subject: modelling an abstract processing worker
 
 #### Step 1. Describe the state shape
 
@@ -123,9 +125,9 @@ const workerMachine = combineStates(
 
 </details>
 
-#### Step 2. Describe the behavior - relations between states
+#### Step 2. Describe the behaviour — relations between states
 
-Second step is about listing allowed events for each of defined state + the
+Second step is about listing allowed events for each defined state + the
 results (next states) of processing those events.
 
 <details open>
@@ -169,13 +171,13 @@ const workerMachine = combineStates(/* ... */).createMachine(
         return state.Processing(job);
       },
     },
-    // States doesn't have to define any events
+    // States don't have to define any events
     Failed: {},
-    // A star group define events that are allowed in ANY state (cross-state events).
+    // A star group defines events that are allowed in ANY state (cross-state events).
     // The star group is optional; your machine may not define any cross-state events
     '*': {
       reset: () => state.Idle(),
-      // Cross-state events DOES NOT have access to the state's data.
+      // Cross-state events DO NOT have access to the state's data.
       // The payload of cross-state events is specified as the FIRST param
       killed: (reason: string) => state.Failed({ reason }),
     },
@@ -261,7 +263,7 @@ const stateIdle = state.Idle();
 const stateListening = transition(stateIdle, event.started());
 
 // The type of resulting state is determined by the types of input state and
-// event, so we can can access the Date without any additional checks.
+// event, so we can access the Date without any additional checks.
 // stateListening: { name: 'Listening', data: Date }
 console.info(`Started listening at ${stateListening.data.toUTCString()}`);
 
@@ -366,10 +368,10 @@ if (is(resultingState, state.Queued, state.Processing)) {
 First, embed nested machine's state inside outer machine's `data`.
 
 ```typescript
-const innnerMachine = createMachine(/* ... */);
+const innerMachine = combineStates(/* ... */).createMachine(/* ... */);
 
 defineState('OuterState').withData<{
-  inner: StateOf<typeof innnerMachine.state>;
+  inner: StateOf<typeof innerMachine.state>;
 }>(),
 ```
 
@@ -379,7 +381,7 @@ Next, define outer machine's event handler that runs
 ```typescript
 Outer: {
   ...forwardEvents(innerMachine, state.Outer, data => data.inner),
-  transitionInner: ({ inner }, event: EventOf<typeof innnerMachine.event>) =>
+  transitionInner: ({ inner }, event: EventOf<typeof innerMachine.event>) =>
     state.Outer({ inner: innerMachine.transition(inner, event) }),
 }
 ```
@@ -393,11 +395,12 @@ See the [nesting docs](simply-stated/src/nesting/README.md) ·
 ## Adapters
 
 Describe your state, then plug it into your state manager with available
-adapters. See examples in [examples/](examples).
+adapters. See examples in [examples/](examples/README.md).
+
+See the [adapters docs](simply-stated/src/adapters/README.md).
 
 - **Redux Toolkit** — single state & collection adapters (`simply-stated/redux-toolkit`)
-  · [docs](simply-stated/src/adapters/redux-toolkit/README.md) ·
-  [examples](examples/redux-toolkit/README.md)
+  · [docs](simply-stated/src/adapters/redux-toolkit/README.md) · [examples](examples/redux-toolkit/README.md)
 - **Zustand** — _(coming soon)_
 - **Pinia** — _(coming soon)_
 
