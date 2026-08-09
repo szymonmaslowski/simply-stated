@@ -411,16 +411,18 @@ type ValidateCombine<
         }
     : DefinitionGroups;
 
+// The `extends infer Result ? Result : never` tails below are load-bearing for
+// tooltips: they make editors print the plain object union.
 export type StateOf<
   MapOfStateCreators extends StateCreatorsMap<readonly AnyStateCreator[]>,
   StateName extends keyof MapOfStateCreators = keyof MapOfStateCreators,
-> = Simplify<
-  {
-    [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
-      ? ReturnType<MapOfStateCreators[SN]>
-      : never;
-  }[StateName]
->;
+> = {
+  [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
+    ? Simplify<ReturnType<MapOfStateCreators[SN]>>
+    : never;
+}[StateName] extends infer Result
+  ? Result
+  : never;
 
 export type StateCreatorOf<
   MapOfStateCreators extends StateCreatorsMap<readonly AnyStateCreator[]>,
@@ -429,16 +431,20 @@ export type StateCreatorOf<
   [SN in StateName]: MapOfStateCreators[SN] extends AnyStateCreator
     ? MapOfStateCreators[SN]
     : never;
-}[StateName];
+}[StateName] extends infer Result
+  ? Result
+  : never;
 
 export type EventOf<
   MapOfEventCreators extends Record<string, (...args: any) => { type: string }>,
   EventName extends keyof MapOfEventCreators = keyof MapOfEventCreators,
 > = {
   [K in EventName]: MapOfEventCreators[K] extends (...args: any) => any
-    ? ReturnType<MapOfEventCreators[K]>
+    ? Simplify<ReturnType<MapOfEventCreators[K]>>
     : never;
-}[EventName];
+}[EventName] extends infer Result
+  ? Result
+  : never;
 
 export type EventPayloadOf<EventCreator extends (...args: never[]) => unknown> =
   Parameters<EventCreator> extends [infer Payload] ? Payload : never;
