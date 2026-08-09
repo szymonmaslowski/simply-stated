@@ -12,7 +12,7 @@ import {
 } from 'simply-stated/redux-toolkit';
 ```
 
-- **single state adapter** — `toSliceOptions(machine, options)` adapts one
+- **Single state adapter** — `toSliceOptions(machine, options)` adapts one
   machine **instance** to a slice. Returns
   `{ initialState, reducers, selectors }`.
 
@@ -42,7 +42,7 @@ import {
 
 ## How they work
 
-### Both adapters:
+### Both adapters
 
 - **State is the stored value.**
   Machine state is a serialisable object, so it is stored as-is.
@@ -54,14 +54,14 @@ import {
 
 - **Selectors**
   - Expose your custom selectors via the optional `selectors` option.
-  - Each custom selector receives the state as its first argument, plus an
-    extra arguments representing the selector parameter - same as the RTK do.
+  - Each custom selector receives the state as its first argument, plus extra
+    arguments representing the selector parameters — the same as RTK does.
   - Selectors are rebound to the slice state, so they keep working when the
     machine is mounted under a `nestingPath`.
 
 - **`nestingPath` option enables composition.**
   - It mounts a machine's state at a given path inside the slice state
-  - Reducers/selectors work against the nested state - the state parameter
+  - Reducers/selectors work against the nested state — the state parameter
     is unnested (you don't have to access it via the nesting path).
 
 ### Single instance adapter (`toSliceOptions`) specifics
@@ -105,7 +105,7 @@ import {
 
   Whatever it returns replaces the two default lifecycle reducers (event
   reducers always stay). Returned reducers get the RTK `EntityState` — nesting
-  is handled for you — and may either mutate it or return a new one
+  is handled for you — and may either mutate it or return a new one.
 
   ```typescript
   toCollectionSliceOptions(myMachine, {
@@ -124,10 +124,10 @@ import {
   - In case all the machine's states carry an identifier in a data, you can point
     it out with the `selectIdFromData` option.
   - Providing `selectIdFromData` removes `entityId` from the entity state and
-    the `addEntity` action (`addEntity(state)`);
+    the `addEntity` action (`addEntity(state)`).
 
 - **Actions patched to target specific state entities.**
-  - Each event-derived action specify an `entityId` in the payload to target
+  - Each event-derived action specifies an `entityId` in the payload to target
     specific state entity.
   - If particular machine event has a payload, the derived action will have
     that payload nested: `{ entityId, payload }`.

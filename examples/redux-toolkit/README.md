@@ -1,11 +1,11 @@
 # Redux Toolkit examples
 
-Below examples use a few example machines (`fetchMachine`, `toggleMachine`, `jobMachine`)
-defined in [../example-machines.ts](../example-machines.ts).
+The examples below use a few example machines (`fetchMachine`, `toggleMachine`,
+`jobMachine`) defined in [../example-machines.ts](../example-machines.ts).
 
 ## Examples
 
-### `toSliceOptions(machine, options)` - single machine state
+### `toSliceOptions(machine, options)` — single machine state
 
 - [basic.ts](./basic.ts) - **one machine, one instance and one slice**.
 
@@ -25,7 +25,7 @@ defined in [../example-machines.ts](../example-machines.ts).
   - assembling all slice state parts
   - merging each machine's selectors into the combined slice.
 
-### `toCollectionSliceOptions(machine)` - a collection of machine states.
+### `toCollectionSliceOptions(machine, options)` — a collection of machine states
 
 - [basic-collection.ts](./basic-collection.ts) - **a collection of one machine states**.
   - This case needs to distinguish the specific fetch state targeted via an
@@ -40,7 +40,7 @@ defined in [../example-machines.ts](../example-machines.ts).
   Similarly to the [complex.ts](./complex.ts) example, we are merging a few
   machine state collections into a single slice.
   - Specifying "mounting points" via the `nestingPath` property.
-  - The job case provides the `selectIdFromData` option that point out the
+  - The job case provides the `selectIdFromData` option that points out the
     entity id from the state's data. With it, no redundant `entityId` property is stored.
   - The `sortComparer` option (the same as RTK's entity adapter one) orders job
     entities by a state ranking.
