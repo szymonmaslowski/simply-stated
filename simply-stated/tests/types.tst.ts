@@ -325,3 +325,23 @@ test('union-typed payload in a single handler is allowed', () => {
     }
   >();
 });
+
+test('onTransition receives the state and event unions of the machine', () => {
+  const { createMachine, state } = combineStates(
+    defineState('Closed'),
+    defineState('Open').withData<{ accountId: string }>(),
+  );
+  createMachine(
+    {
+      Closed: { opened: (_, p: { accountId: string }) => state.Open(p) },
+      Open: { closed: () => state.Closed() },
+    },
+    {
+      onTransition: ({ state: previousState, event, nextState }) => {
+        expect(previousState.name).type.toBe<'Closed' | 'Open'>();
+        expect(nextState.name).type.toBe<'Closed' | 'Open'>();
+        expect(event.type).type.toBe<'opened' | 'closed'>();
+      },
+    },
+  );
+});

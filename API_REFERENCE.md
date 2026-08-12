@@ -21,6 +21,7 @@ import type { StateOf, EventOf, StateCreatorOf } from 'simply-stated';
 - [Event creators map](#event-creators-map)
   - [Event creator](#event-creator)
 - [createMachine](#createmachine)
+  - [onTransition](#ontransition)
   - [onInvalidTransition](#oninvalidtransition)
 - [StateMachineTree](#statemachinetree)
   - [State level](#state-level)
@@ -257,8 +258,55 @@ Builds the actual state machine.
       [combineStates](#combinestates) and the one of the
       [Machine](#the-machine-object).
 - `options` _\<Object>_ Optional.
+  - `onTransition` _\<[onTransition](#ontransition)>_
   - `onInvalidTransition` _\<[onInvalidTransition](#oninvalidtransition)>_
 - Returns: _\<[Machine](#the-machine-object)>_
+
+### onTransition
+
+Callback fired for every performed transition.
+
+**({ state: State; event: Event; nextState: State }): void**
+
+Gets called by the [Machine.transition](#machinetransition) once a handler
+computed the resulting state, with the `state` and `event` that were supplied
+to the transition and the resulting `nextState`. It fires for both
+[per-state](#per-state-handler) and [cross-state](#cross-state-handler)
+handlers, [self transitions](#event-handler) included. It does **not** fire for
+an [invalid transition](#invalid-transitions) — that case is reported by
+[onInvalidTransition](#oninvalidtransition).
+
+The transition returns the state computed by the handler, so the callback
+cannot be used to amend the result. Its return value is ignored.
+
+Use it for logging, telemetry, or persisting the transition history. Note the
+`state` and `nextState` are the **wide state unions** — narrow them with
+[is](#is) when a specific state is of interest.
+
+A transition of an inner machine driven by [forwardEvents](#forwardevents) runs
+that machine's own `transition`, so **both** machines' callbacks fire — the
+inner one first.
+
+**Default:** none.
+
+---
+
+```typescript
+combineStates(
+  defineState('Idle'),
+  defineState('Listening').withData<Date>(),
+).createMachine(
+  state => ({
+    Idle: { started: () => state.Listening(new Date()) },
+    Listening: {},
+  }),
+  {
+    onTransition: ({ state, event, nextState }) => {
+      console.info(`${state.name} --${event.type}--> ${nextState.name}`);
+    },
+  },
+);
+```
 
 ### onInvalidTransition
 
@@ -421,6 +469,9 @@ order:
 3. no handler available — the [onInvalidTransition](#createmachine) runs and
    the **input state is returned unchanged**.
 
+When a handler was found (1 or 2), the [onTransition](#ontransition) callback
+runs with the resulting state before it is returned.
+
 ```typescript
 const { event, state, transition } = myMachine;
 
@@ -461,7 +512,8 @@ If the supplied transition params (state and event) do not form a transition
 (they don't match any handler in the [StateMachineTree](#statemachinetree)),
 such transition attempt is invalid. In that case the
 [Machine.transition](#machinetransition) function returns the **same state
-object** unchanged and invokes [onInvalidTransition](#createmachine).
+object** unchanged and invokes [onInvalidTransition](#createmachine). The
+[onTransition](#ontransition) callback does not run.
 
 ```typescript
 const idleState = myMachine.state.Idle();
