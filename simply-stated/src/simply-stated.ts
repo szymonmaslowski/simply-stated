@@ -362,6 +362,11 @@ type CreateMachineOptions<
   StateCreators extends readonly AnyStateCreator[],
   Tree,
 > = {
+  onTransition?: (context: {
+    state: StateType<StateCreators>;
+    event: EventType<Tree>;
+    nextState: StateType<StateCreators>;
+  }) => void;
   onInvalidTransition?: (context: {
     state: StateType<StateCreators>;
     event: EventType<Tree>;
@@ -487,6 +492,7 @@ export const combineStates = <
       ? (...args: A) => ValidateTree<T> & T
       : ValidateTree<TreeOrFactory> & TreeOrFactory,
     {
+      onTransition,
       onInvalidTransition = defaultInvalidTransitionLogger,
     }: CreateMachineOptions<StateCreators, Tree> = {},
   ): Machine<StateCreators, Tree> => {
@@ -515,19 +521,23 @@ export const combineStates = <
         | EventHandler<StateCreators, AnyStateCreator>
         | undefined;
 
+      const data = 'data' in currentState ? currentState.data : undefined;
+      const crossStateEventHandler = tree['*']?.[event.type];
+
+      let nextState: StateType<StateCreators> | null = null;
       if (eventHandler) {
-        const data = 'data' in currentState ? currentState.data : undefined;
-        return eventHandler(data, eventPayload) as StateType<StateCreators>;
+        nextState = eventHandler(data, eventPayload);
+      } else if (crossStateEventHandler) {
+        nextState = crossStateEventHandler(eventPayload);
       }
 
-      const crossStateHandlers = tree['*'];
-      const crossStateEventHandler = crossStateHandlers?.[event.type];
-      if (crossStateEventHandler) {
-        return crossStateEventHandler(eventPayload) as StateType<StateCreators>;
+      if (nextState === null) {
+        onInvalidTransition({ state: currentState, event });
+        return currentState;
       }
 
-      onInvalidTransition({ state: currentState, event });
-      return currentState;
+      onTransition?.({ state: currentState, event, nextState });
+      return nextState;
     };
 
     return {

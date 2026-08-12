@@ -203,6 +203,20 @@ describe('createMachine', () => {
       transition(state.B(), event.go());
       expect(onInvalidTransition).toHaveBeenCalledOnce();
     });
+
+    it('forwards options.onTransition in factory form', () => {
+      const onTransition = vi.fn();
+      const { createMachine, state } = combineStates(
+        defineState('A'),
+        defineState('B'),
+      );
+      const { transition, event } = createMachine(
+        s => ({ A: { go: () => s.B() }, B: {} }),
+        { onTransition },
+      );
+      transition(state.A(), event.go());
+      expect(onTransition).toHaveBeenCalledOnce();
+    });
   });
 
   describe('transition', () => {
@@ -293,6 +307,92 @@ describe('createMachine', () => {
         state: start,
         event: m.event.go(),
       });
+    });
+
+    it('calls onTransition with the input state, event and resulting state', () => {
+      const onTransition = vi.fn();
+      const { createMachine, state } = combineStates(
+        defineState('Closed'),
+        defineState('Open').withData<{ accountId: string }>(),
+      );
+      const m = createMachine(
+        {
+          Closed: { opened: (_, p: { accountId: string }) => state.Open(p) },
+          Open: {},
+        },
+        { onTransition },
+      );
+      const start = state.Closed();
+      const openedEvent = m.event.opened({ accountId: 'a' });
+      const next = m.transition(start, openedEvent);
+      expect(onTransition).toHaveBeenCalledTimes(1);
+      expect(onTransition).toHaveBeenCalledWith({
+        state: start,
+        event: openedEvent,
+        nextState: next,
+      });
+    });
+
+    it('calls onTransition for "*" cross-state handlers', () => {
+      const onTransition = vi.fn();
+      const { createMachine, state } = combineStates(
+        defineState('A'),
+        defineState('B'),
+      );
+      const m = createMachine(
+        { '*': { go: () => state.B() }, A: {}, B: {} },
+        { onTransition },
+      );
+      const start = state.A();
+      const next = m.transition(start, m.event.go());
+      expect(onTransition).toHaveBeenCalledWith({
+        state: start,
+        event: m.event.go(),
+        nextState: next,
+      });
+    });
+
+    it('calls onTransition for self transitions', () => {
+      const onTransition = vi.fn();
+      const { createMachine, state } = combineStates(
+        defineState('A').withData<{ n: number }>(),
+      );
+      const m = createMachine(
+        { A: { add: (prev: { n: number }) => state.A({ n: prev.n + 1 }) } },
+        { onTransition },
+      );
+      m.transition(state.A({ n: 1 }), m.event.add());
+      expect(onTransition).toHaveBeenCalledWith({
+        state: { name: 'A', data: { n: 1 } },
+        event: { type: 'add' },
+        nextState: { name: 'A', data: { n: 2 } },
+      });
+    });
+
+    it('does not call onTransition on an invalid transition', () => {
+      const onTransition = vi.fn();
+      const { createMachine, state } = combineStates(
+        defineState('A'),
+        defineState('B'),
+      );
+      const m = createMachine(
+        { A: { go: () => state.B() }, B: {} },
+        { onTransition, onInvalidTransition: () => {} },
+      );
+      m.transition(state.B(), m.event.go());
+      expect(onTransition).not.toHaveBeenCalled();
+    });
+
+    it('ignores the onTransition return value', () => {
+      const { createMachine, state } = combineStates(
+        defineState('A'),
+        defineState('B'),
+      );
+      const m = createMachine(
+        { A: { go: () => state.B() }, B: {} },
+        { onTransition: () => state.A() },
+      );
+      expect(m.transition(state.A(), m.event.go()).name).toBe('B');
     });
   });
 });

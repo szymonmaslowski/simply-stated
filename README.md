@@ -183,6 +183,13 @@ const workerMachine = combineStates(/* ... */).createMachine(
     },
   }),
   {
+    // Optional onTransition function gets called for every performed
+    // transition, right after the handler computed the resulting state.
+    // It cannot amend the result — use it for logging, telemetry etc.
+    onTransition: ({ state, event, nextState }) => {
+      console.info(`${state.name} --${event.type}--> ${nextState.name}`);
+    },
+
     // Optional onInvalidTransition function gets called when attempted to
     // "execute" an event that is not allowed for a given state.
     // By default the transition function logs an error to the console
@@ -229,6 +236,9 @@ const workerMachine = combineStates(/* ... */).createMachine(
     },
   }),
   {
+    onTransition: ({ state, event, nextState }) => {
+      console.info(`${state.name} --${event.type}--> ${nextState.name}`);
+    },
     onInvalidTransition: ({ state, event }) => {
       throw new Error(`'${event.type}' not allowed in '${state.name}'`);
     },
