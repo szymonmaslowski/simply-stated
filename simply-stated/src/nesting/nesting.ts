@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { getAtPath, setAtPath } from '../path';
+import { getAtPath, setAtPath } from '../utils';
 import type {
   AnyMachine,
   AnyStateCreator,
@@ -10,7 +10,7 @@ import type {
   StateOf,
   TreeOf,
 } from '../simply-stated';
-import type { Join, UnionToTuple } from '../type-utils';
+import type { JoinStrings, UnionToTuple } from '../type-utils';
 
 type DataFromCreator<StateCreator extends AnyStateCreator> =
   Parameters<StateCreator>[0];
@@ -98,7 +98,7 @@ type EventsAllowedByState<Machine extends AnyMachine, ExpectedInnerState> =
             : never)
     : never;
 
-type PresentStateNames<State> = Join<
+type PresentStateNames<State> = JoinStrings<
   UnionToTuple<StateNamesOf<State>>,
   ', ',
   "'"

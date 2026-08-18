@@ -12,9 +12,10 @@
     "test": "run-s test:*",
     "test:runtime": "vitest run",
     "test:types": "tstyche",
-    "typecheck": "run-s typecheck:*",
+    "typecheck": "run-s --continue-on-error typecheck:*",
     "typecheck:current": "tsc -p simply-stated/tsconfig.json --noEmit && tsc -p examples/tsconfig.json",
-    "typecheck:next": "npx -p typescript@7 tsc -p simply-stated/tsconfig.json --noEmit",
+    "typecheck:next": "npx -p typescript@7 tsc -p simply-stated/tsconfig.json --noEmit && npx -p typescript@7 tsc -p simply-stated/tests/tsconfig.json --noEmit",
+    "check:lockfile": "pnpm install --frozen-lockfile --lockfile-only",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
@@ -45,6 +46,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
     "unist-util-visit": "^5.1.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "zustand": "^5.0.14"
   }
 }

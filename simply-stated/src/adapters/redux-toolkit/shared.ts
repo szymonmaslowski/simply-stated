@@ -1,18 +1,11 @@
 import type { PayloadAction, SliceSelectors } from '@reduxjs/toolkit';
-import type { AnyMachine } from '../../simply-stated';
-import type { Simplify } from '../../type-utils';
+import type { EmptyObject, SetAtPath, Simplify } from '../../type-utils';
 
-// Not `StateOf`: its tooltip-friendly tail stays deferred while `Machine` is
-// unresolved, and the adapters need an object type here.
-export type StateOfMachine<Machine extends AnyMachine> = Simplify<
-  ReturnType<Machine['state'][keyof Machine['state']]>
+export type NestAt<Path extends string | undefined, Value> = SetAtPath<
+  EmptyObject,
+  Path extends string ? Path : '',
+  Value
 >;
-
-export type NestAt<Path extends string | undefined, Value> = Path extends string
-  ? Path extends `${infer Head}.${infer Rest}`
-    ? { [K in Head]: NestAt<Rest, Value> }
-    : { [K in Path]: Value }
-  : Value;
 
 export type GenericReducer<State, Payload> = [Payload] extends [never]
   ? <S extends State>(state: S) => S

@@ -1,7 +1,8 @@
 # Simply Stated
 
 Strongly typed, declarative utility for state machine modelling
-that **integrates with your existing state management solution**.
+that **integrates with your existing state management solution**
+(Redux Toolkit, Zustand and more to come).
 
 Best-in-class dev experience with **compile-time guards** and a simple
 and powerful API.
@@ -24,7 +25,7 @@ use Simply Stated to:
 2. Drive it using your state management solution — manually or using one of
    the available adapters that do it for you.
 
-See [adapters](#adapters) for popular state management libraries.
+> See [adapters](#adapters) for popular state management libraries.
 
 **Strong type support** - strongest of its strong strengths. 🙃<br />
 Simply Stated puts a huge emphasis on guarding the proper usage with clear type
@@ -409,9 +410,12 @@ adapters. See examples in [examples/](examples/README.md).
 
 See the [adapters docs](simply-stated/src/adapters/README.md).
 
-- **Redux Toolkit** — single state & collection adapters (`simply-stated/redux-toolkit`)
-  · [docs](simply-stated/src/adapters/redux-toolkit/README.md) · [examples](examples/redux-toolkit/README.md)
-- **Zustand** — _(coming soon)_
+- **Redux Toolkit** — `simply-stated/redux-toolkit`
+  · [docs](simply-stated/src/adapters/redux-toolkit/README.md) ·
+  [examples](examples/redux-toolkit/README.md)
+- **Zustand** — `simply-stated/zustand`
+  · [docs](simply-stated/src/adapters/zustand/README.md) ·
+  [examples](examples/zustand/README.md)
 - **Pinia** — _(coming soon)_
 
 ## License

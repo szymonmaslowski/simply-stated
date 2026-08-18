@@ -26,14 +26,6 @@ const store = configureStore({
   reducer: { [basicCollectionSlice.name]: basicCollectionSlice.reducer },
 });
 
-const fetch1 = basicCollectionSlice.selectors.selectById(
-  store.getState(),
-  'fetch1',
-);
-if (fetch1 && is(fetch1, fetchMachine.state.Success)) {
-  console.info('Fetch success! Data:', fetch1.data.value);
-}
-
 store.dispatch(
   addEntity({
     entityId: 'fetch2',
@@ -42,3 +34,11 @@ store.dispatch(
 );
 store.dispatch(fetch({ entityId: 'fetch2', payload: { query: '' } }));
 store.dispatch(removeEntity({ entityId: 'fetch2' }));
+
+const fetch1 = basicCollectionSlice.selectors.selectById(
+  store.getState(),
+  'fetch1',
+);
+if (fetch1 && is(fetch1, fetchMachine.state.Success)) {
+  console.info('Fetch success! Data:', fetch1.data.value);
+}
