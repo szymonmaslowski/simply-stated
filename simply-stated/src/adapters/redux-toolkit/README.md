@@ -44,7 +44,8 @@ import {
 
 ### Both adapters
 
-- **State is the stored value.**
+- **Machine state is the stored value.**
+
   Machine state is a serialisable object, so it is stored as-is.
 
 - **Events become actions.**

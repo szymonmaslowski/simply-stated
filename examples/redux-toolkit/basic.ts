@@ -19,3 +19,8 @@ const store = configureStore({
 
 store.dispatch(fetch({ query: '' }));
 store.dispatch(resolved('server-payload'));
+
+const fetchState = store.getState().basic;
+if (fetchState.name === 'Success') {
+  console.info('Fetch success! Data:', fetchState.data.value);
+}
