@@ -1,8 +1,9 @@
 import type { SliceSelectors } from '@reduxjs/toolkit';
-import { getAtPath, setAtPath, splitPath } from '../../path';
+import { getAtPath, setAtPath, splitPath } from '../../utils';
 import type { AnyMachine, EventPayloadOf } from '../../simply-stated';
+import type { StateOfMachine } from '../shared';
 import { rebindUserSelectors } from './shared';
-import type { GenericReducer, NestAt, StateOfMachine } from './shared';
+import type { GenericReducer, NestAt } from './shared';
 
 type EventReducers<Machine extends AnyMachine, SliceState> = {
   [K in keyof Machine['event']]: GenericReducer<

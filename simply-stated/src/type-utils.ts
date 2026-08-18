@@ -44,6 +44,8 @@ export type GetTagMetadata<
 
 export type Simplify<T> = { [KeyType in keyof T]: T[KeyType] } & {};
 
+export type EmptyObject = Record<never, never>;
+
 export type IsAny<T> = 0 extends 1 & NoInfer<T> ? true : false;
 
 export type IsNever<T> = [T] extends [never] ? true : false;
@@ -108,7 +110,7 @@ export type UnionToTuple<Union extends string, Result extends string[] = []> = [
     ? UnionToTuple<Exclude<Union, Last>, [Last, ...Result]>
     : never;
 
-export type Join<
+export type JoinStrings<
   Parts extends readonly string[],
   Separator extends string,
   Wrapper extends string,
@@ -118,5 +120,77 @@ export type Join<
 ]
   ? Rest extends readonly []
     ? `${Wrapper}${Head}${Wrapper}`
-    : `${Wrapper}${Head}${Wrapper}${Separator}${Join<Rest, Separator, Wrapper>}`
+    : `${Wrapper}${Head}${Wrapper}${Separator}${JoinStrings<Rest, Separator, Wrapper>}`
   : '';
+
+type AnyFunction = (...args: never[]) => unknown;
+
+type SharedKeys<Left, Right> = Extract<keyof Left & keyof Right, string>;
+
+export type SetAtPath<
+  Target,
+  Path extends string,
+  Value,
+> = Path extends `${infer Head}.${infer Rest}`
+  ? Simplify<
+      Omit<Target, Head> & {
+        [Key in Head]: SetAtPath<
+          Head extends keyof Target ? Target[Head] : EmptyObject,
+          Rest,
+          Value
+        >;
+      }
+    >
+  : Path extends ''
+    ? Value
+    : Simplify<Omit<Target, Path> & { [Key in Path]: Value }>;
+
+export type OmitAtPath<
+  Shape,
+  Path extends string,
+> = Path extends `${infer Head}.${infer Rest}`
+  ? Head extends keyof Shape
+    ? Simplify<
+        Omit<Shape, Head> & { [Key in Head]: OmitAtPath<Shape[Head], Rest> }
+      >
+    : Shape
+  : Simplify<Omit<Shape, Path>>;
+
+// Two branches merge only while both sides are objects and their keys stay
+// disjoint; anything else claimed twice is reported as the path that carries it.
+export type ConflictPaths<Left, Right, Prefix extends string = ''> = {
+  [Key in SharedKeys<Left, Right>]: Left[Key] extends AnyFunction
+    ? `${Prefix}${Key}`
+    : Right[Key] extends AnyFunction
+      ? `${Prefix}${Key}`
+      : Left[Key] extends object
+        ? Right[Key] extends object
+          ? ConflictPaths<Left[Key], Right[Key], `${Prefix}${Key}.`>
+          : `${Prefix}${Key}`
+        : `${Prefix}${Key}`;
+}[SharedKeys<Left, Right>];
+
+export type ConflictsAtPath<Shape, Path extends string> =
+  IsNever<
+    ConflictPaths<Shape, SetAtPath<EmptyObject, Path, unknown>>
+  > extends true
+    ? false
+    : true;
+
+export type DeepMerge<Left, Right> = Simplify<{
+  [Key in keyof Left | keyof Right]: Key extends keyof Right
+    ? Key extends keyof Left
+      ? Left[Key] extends AnyFunction
+        ? Right[Key]
+        : Right[Key] extends AnyFunction
+          ? Right[Key]
+          : Left[Key] extends object
+            ? Right[Key] extends object
+              ? DeepMerge<Left[Key], Right[Key]>
+              : Right[Key]
+            : Right[Key]
+      : Right[Key]
+    : Key extends keyof Left
+      ? Left[Key]
+      : never;
+}>;

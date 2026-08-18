@@ -14,9 +14,15 @@ import type {
   UsageGuardError,
   EventPayloadOf,
 } from '../../simply-stated';
-import { getAtPath, setAtPath, splitPath } from '../../path';
+import { getAtPath, setAtPath, splitPath } from '../../utils';
 import { rebindUserSelectors } from './shared';
-import type { GenericReducer, NestAt, StateOfMachine } from './shared';
+import type { GenericReducer, NestAt } from './shared';
+import type {
+  DataOfMachine,
+  EntityIdFor,
+  ModeFor,
+  StateOfMachine,
+} from '../shared';
 
 const entityAdapterCrudFnNames = [
   'addOne',
@@ -33,12 +39,6 @@ const entityAdapterCrudFnNames = [
   'upsertMany',
 ] as const;
 
-type DataOfMachine<Machine extends AnyMachine> = [
-  StateOfMachine<Machine>,
-] extends [{ data: infer D }]
-  ? D
-  : never;
-
 type Entity<
   Machine extends AnyMachine,
   Id extends RTKEntityId,
@@ -50,14 +50,6 @@ type Entity<
 type CollectionPayload<Id extends RTKEntityId, P> = [P] extends [never]
   ? { entityId: Id }
   : { entityId: Id; payload: P };
-
-type ModeFor<SelectedEntityId> = [SelectedEntityId] extends [never]
-  ? 'explicit'
-  : 'data';
-
-type EntityIdFor<SelectedEntityId> = [SelectedEntityId] extends [never]
-  ? string
-  : SelectedEntityId;
 
 type EntityFor<
   Machine extends AnyMachine,

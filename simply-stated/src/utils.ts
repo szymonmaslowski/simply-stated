@@ -1,7 +1,7 @@
 export const splitPath = (path: string): string[] =>
   path === '' ? [] : path.split('.');
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object';
 
 export const getAtPath = <Result>(source: unknown, keys: readonly string[]) =>
@@ -26,4 +26,15 @@ export const setAtPath = <Result>(
       value,
     ),
   } as Result;
+};
+
+export const deepMerge = <Result>(left: unknown, right: unknown): Result => {
+  if (!isRecord(left) || !isRecord(right)) return right as Result;
+  return Object.entries(right).reduce<Record<string, unknown>>(
+    (merged, [key, value]) => {
+      merged[key] = key in left ? deepMerge(left[key], value) : value;
+      return merged;
+    },
+    { ...left },
+  ) as Result;
 };
