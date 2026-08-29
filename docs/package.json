@@ -1,0 +1,30 @@
+{
+  "name": "@simply-stated/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-docs.mjs",
+    "sync:watch": "node scripts/sync-docs.mjs --watch",
+    "dev": "run-p sync:watch astro:dev",
+    "astro:dev": "astro dev",
+    "build": "pnpm sync && astro build",
+    "preview": "astro preview",
+    "check": "pnpm sync && astro check"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.41.7",
+    "astro": "^7.2.3",
+    "sharp": "^0.34.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.5",
+    "chokidar": "^4.0.3",
+    "mdast-util-to-string": "^4.0.0",
+    "npm-run-all": "^4.1.5",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "typescript": "^6.0.3",
+    "unist-util-visit": "^5.1.0"
+  }
+}

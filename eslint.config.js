@@ -7,10 +7,16 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   prettierConfig,
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/.claude/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/.claude/**',
+      'docs/.astro/**',
+      'docs/src/content/docs/**',
+    ],
   },
   {
-    files: ['scripts/**/*.mjs'],
+    files: ['**/scripts/**/*.mjs', 'docs/*.mjs'],
     languageOptions: {
       globals: { console: 'readonly', process: 'readonly' },
     },

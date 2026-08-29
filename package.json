@@ -9,6 +9,10 @@
   "scripts": {
     "build": "tsdown --config simply-stated/tsdown.config.ts",
     "build:readme": "node scripts/build-package-readme.mjs",
+    "docs:dev": "pnpm --filter @simply-stated/docs dev",
+    "docs:build": "pnpm --filter @simply-stated/docs build",
+    "docs:preview": "pnpm --filter @simply-stated/docs preview",
+    "docs:check": "pnpm --filter @simply-stated/docs check",
     "test": "run-s test:*",
     "test:runtime": "vitest run",
     "test:types": "tstyche",
@@ -21,6 +25,12 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "prepare": "husky"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

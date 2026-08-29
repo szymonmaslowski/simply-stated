@@ -2,3 +2,6 @@
 **/node_modules
 # Generated at pack time from the root README by scripts/build-package-readme.mjs
 simply-stated/README.md
+# Mirrored from the repository markdown by docs/scripts/sync-docs.mjs
+docs/src/content/docs
+docs/.astro
