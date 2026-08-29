@@ -127,6 +127,24 @@ describe('createMachine', () => {
     });
   };
 
+  it('drives a machine built inside a generic factory', () => {
+    const buildRunMachine = <Data extends NonNullable<unknown>>() =>
+      combineStates(
+        defineState('Ready', 'Running').withData<Data>(),
+      ).createMachine(state => ({
+        Ready: { start: previousData => state.Running(previousData) },
+        Running: { stop: previousData => state.Ready(previousData) },
+      }));
+
+    const machine = buildRunMachine<{ attempts: number }>();
+    const ready = machine.state.Ready({ attempts: 1 });
+
+    expect(machine.transition(ready, machine.event.start())).toEqual({
+      name: 'Running',
+      data: { attempts: 1 },
+    });
+  });
+
   describe('shape', () => {
     it('returns { event, state, transition }', () => {
       const m = buildMachine();
