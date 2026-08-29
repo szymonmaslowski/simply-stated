@@ -60,7 +60,7 @@ type StateCreator<
   Data extends NonNullable<unknown> | void,
   HasData extends boolean,
 > = ((
-  ...args: HasData extends true ? [data: Data] : [data?: never]
+  ...args: HasData extends true ? [data: Data] : []
 ) => StateObject<StateName, Data, HasData>) & {
   stateName: StateName;
 };
@@ -164,7 +164,8 @@ type StateCreatorsMap<StateCreators extends readonly AnyStateCreator[]> =
     [SC in StateCreators[number] as SC['stateName']]: SC;
   }>;
 
-export type DataOfStateCreator<SC extends AnyStateCreator> = Parameters<SC>[0];
+type DataOfStateCreator<SC extends AnyStateCreator> =
+  Parameters<SC> extends [infer Data] ? Data : undefined;
 
 type EventHandler<
   StateCreators extends readonly AnyStateCreator[],

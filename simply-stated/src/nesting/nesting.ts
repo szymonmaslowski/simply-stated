@@ -4,7 +4,6 @@ import { getAtPath, setAtPath } from '../utils';
 import type {
   AnyMachine,
   AnyStateCreator,
-  DataOfStateCreator,
   UsageGuardError,
   EventPayloadOf,
   NarrowedTransition,
@@ -13,10 +12,13 @@ import type {
 } from '../simply-stated';
 import type { JoinStrings, UnionToTuple } from '../type-utils';
 
+type DataFromCreator<StateCreator extends AnyStateCreator> =
+  Parameters<StateCreator>[0];
+
 type EventNameOfMachine<Machine extends AnyMachine> = keyof Machine['event'] &
   string;
 
-const recordSelectorPath = <Data>(selector: (data: Data) => unknown) => {
+const recordSelectorPath = (selector: (proxy: unknown) => unknown) => {
   const path: string[] = [];
   const proxy: unknown = new Proxy(
     {},
@@ -27,7 +29,7 @@ const recordSelectorPath = <Data>(selector: (data: Data) => unknown) => {
       },
     },
   );
-  selector(proxy as Data);
+  selector(proxy);
   return path;
 };
 
@@ -38,7 +40,7 @@ const makeEventHandlerCreator =
     path: string[],
   ) =>
   (eventCreator: Machine['event'][string]) =>
-  (data: DataOfStateCreator<OuterStateCreator>, payload: any) => {
+  (data: DataFromCreator<OuterStateCreator>, payload: any) => {
     const currentNestedState = getAtPath(data, path);
     const nextNestedState = innerMachine.transition(
       currentNestedState,
@@ -52,11 +54,9 @@ type ForwardedEventHandler<
   EventName extends EventNameOfMachine<Machine>,
   OuterStateCreator extends AnyStateCreator,
 > = [EventPayloadOf<Machine['event'][EventName]>] extends [never]
-  ? (
-      data: DataOfStateCreator<OuterStateCreator>,
-    ) => ReturnType<OuterStateCreator>
+  ? (data: DataFromCreator<OuterStateCreator>) => ReturnType<OuterStateCreator>
   : (
-      data: DataOfStateCreator<OuterStateCreator>,
+      data: DataFromCreator<OuterStateCreator>,
       payload: EventPayloadOf<Machine['event'][EventName]>,
     ) => ReturnType<OuterStateCreator>;
 
@@ -138,7 +138,7 @@ export const forwardEvents = <
 >(
   innerMachine: Machine,
   outerStateCreator: OuterStateCreator,
-  selector: (data: DataOfStateCreator<OuterStateCreator>) => ExpectedInnerState,
+  selector: (data: DataFromCreator<OuterStateCreator>) => ExpectedInnerState,
 ) => {
   const path = recordSelectorPath(selector);
   const createHandler = makeEventHandlerCreator(
