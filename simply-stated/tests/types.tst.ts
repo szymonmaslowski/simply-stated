@@ -170,7 +170,7 @@ void (() => {
   event.failed(false);
 
   // 12. Void-data state creator called with data.
-  // @ts-expect-error is not assignable to parameter of type 'undefined'
+  // @ts-expect-error Expected 0 arguments
   state.Closed({});
 
   // 13. With-data state creator called without data.
