@@ -157,6 +157,45 @@ describe('createMachine', () => {
         payload: { accountId: 'a' },
       });
     });
+
+    it('event creator carries its eventType', () => {
+      const { event } = buildMachine();
+      expect(event.reset.eventType).toBe('reset');
+      expect(event.opened.eventType).toBe('opened');
+    });
+  });
+
+  describe('is() with events', () => {
+    it('returns true when the event matches the passed creator', () => {
+      const { event } = buildMachine();
+      expect(is(event.reset(), event.reset)).toBe(true);
+    });
+
+    it('returns false when the event does not match', () => {
+      const { event } = buildMachine();
+      expect(is(event.reset(), event.closed)).toBe(false);
+    });
+
+    it('returns true if any of multiple creators matches', () => {
+      const { event } = buildMachine();
+      expect(
+        is(event.opened({ accountId: 'a' }), event.closed, event.opened),
+      ).toBe(true);
+    });
+
+    it('returns false when none of multiple creators matches', () => {
+      const { event } = buildMachine();
+      expect(
+        is(event.opened({ accountId: 'a' }), event.closed, event.reset),
+      ).toBe(false);
+    });
+
+    it('does not match a state name against an event type', () => {
+      const { createMachine, state } = combineStates(defineState('ping'));
+      const { event } = createMachine({ ping: { ping: () => state.ping() } });
+      expect(is(state.ping(), event.ping as never)).toBe(false);
+      expect(is(event.ping(), state.ping as never)).toBe(false);
+    });
   });
 
   describe('tree factory', () => {

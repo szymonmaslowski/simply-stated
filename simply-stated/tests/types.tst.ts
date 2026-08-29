@@ -11,6 +11,7 @@ import {
   combineStates,
   defineState,
   is,
+  type EventCreatorOf,
   type EventOf,
   type StateOf,
 } from '../src';
@@ -230,6 +231,21 @@ test('EventOf with a name extracts the matching event shape', () => {
   }>();
 });
 
+test('EventCreatorOf without a name returns the union of all event creators', () => {
+  expect<
+    ReturnType<EventCreatorOf<typeof demoMachine.event>>['type']
+  >().type.toBe<'reset' | 'opened' | 'closed' | 'failed'>();
+});
+
+test('EventCreatorOf with a name extracts the matching event creator', () => {
+  expect<EventCreatorOf<typeof demoMachine.event, 'opened'>>().type.toBe<
+    ((payload: { accountId: string }) => {
+      type: 'opened';
+      payload: { accountId: string };
+    }) & { eventType: 'opened' }
+  >();
+});
+
 test('name discriminator narrows the state union', () => {
   const s = demoMachine.state.Closed() as StateOf<typeof demoMachine.state>;
   if (s.name === 'Open') {
@@ -244,6 +260,23 @@ test('is() narrows the state union', () => {
   if (is(currentState, state.Open)) {
     expect(currentState.name).type.toBe<'Open'>();
     expect(currentState.data).type.toBe<{ accountId: string }>();
+  }
+});
+
+test('is() narrows the event union', () => {
+  const { event } = demoMachine;
+  const currentEvent = event.reset() as EventOf<typeof demoMachine.event>;
+  if (is(currentEvent, event.opened)) {
+    expect(currentEvent.type).type.toBe<'opened'>();
+    expect(currentEvent.payload).type.toBe<{ accountId: string }>();
+  }
+});
+
+test('is() narrows the event union to several events', () => {
+  const { event } = demoMachine;
+  const currentEvent = event.reset() as EventOf<typeof demoMachine.event>;
+  if (is(currentEvent, event.opened, event.failed)) {
+    expect(currentEvent.type).type.toBe<'opened' | 'failed'>();
   }
 });
 
@@ -300,10 +333,10 @@ test('identical union payloads shared across states are allowed', () => {
     },
   });
   expect(event.go).type.toBe<
-    (payload: string | number) => {
+    ((payload: string | number) => {
       type: 'go';
       payload: string | number;
-    }
+    }) & { eventType: 'go' }
   >();
 });
 
@@ -319,10 +352,10 @@ test('union-typed payload in a single handler is allowed', () => {
     B: {},
   });
   expect(event.mixed).type.toBe<
-    (payload: { kind: 'x' } | { kind: 'y'; extra: number }) => {
+    ((payload: { kind: 'x' } | { kind: 'y'; extra: number }) => {
       type: 'mixed';
       payload: { kind: 'x' } | { kind: 'y'; extra: number };
-    }
+    }) & { eventType: 'mixed' }
   >();
 });
 

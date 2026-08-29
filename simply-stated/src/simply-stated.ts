@@ -64,6 +64,11 @@ export type AnyStateCreator = StateCreator<string, any>;
 
 export type AnyState = ReturnType<StateCreator<string, any>>;
 
+export type AnyEventCreator = {
+  (...args: any[]): { type: string };
+  eventType: string;
+};
+
 export type AnyMachine = Tagged<
   {
     event: Record<string, (...args: any) => { type: string }>;
@@ -90,11 +95,24 @@ type ValidateNoStar<StateNames extends readonly string[]> = {
     : StateNames[SN];
 };
 
-export const is = <const StateCreators extends readonly AnyStateCreator[]>(
+export function is<const StateCreators extends readonly AnyStateCreator[]>(
   state: { readonly name: string },
   ...stateCreators: StateCreators
-): state is StateType<StateCreators> =>
-  stateCreators.some(stateCreator => stateCreator.stateName === state.name);
+): state is StateType<StateCreators>;
+export function is<const EventCreators extends readonly AnyEventCreator[]>(
+  event: { readonly type: string },
+  ...eventCreators: EventCreators
+): event is ReturnType<EventCreators[number]>;
+export function is(
+  stateOrEvent: { readonly name: string } | { readonly type: string },
+  ...creators: readonly (AnyStateCreator | AnyEventCreator)[]
+) {
+  return creators.some(creator =>
+    'stateName' in creator
+      ? 'name' in stateOrEvent && creator.stateName === stateOrEvent.name
+      : 'type' in stateOrEvent && creator.eventType === stateOrEvent.type,
+  );
+}
 
 const makeStateCreator = <Data extends NonNullable<unknown> | void>({
   stateName,
@@ -202,10 +220,18 @@ type EventObject<
   ? { type: Name }
   : { type: Name; payload: Payload };
 
+type EventCreator<Tree, EventName extends string> = ([
+  EventPayloadFor<Tree, EventName>,
+] extends [never]
+  ? () => EventObject<Tree, EventName>
+  : (
+      payload: EventPayloadFor<Tree, EventName>,
+    ) => EventObject<Tree, EventName>) & {
+  eventType: EventName;
+};
+
 type EventCreatorsMap<Tree> = Simplify<{
-  [EN in EventNames<Tree>]: [EventPayloadFor<Tree, EN>] extends [never]
-    ? () => EventObject<Tree, EN>
-    : (payload: EventPayloadFor<Tree, EN>) => EventObject<Tree, EN>;
+  [EN in EventNames<Tree>]: EventCreator<Tree, EN>;
 }>;
 
 type EventType<Tree> = {
@@ -451,6 +477,17 @@ export type EventOf<
   ? Result
   : never;
 
+export type EventCreatorOf<
+  MapOfEventCreators extends Record<string, AnyEventCreator>,
+  EventName extends keyof MapOfEventCreators = keyof MapOfEventCreators,
+> = {
+  [EN in EventName]: MapOfEventCreators[EN] extends AnyEventCreator
+    ? MapOfEventCreators[EN]
+    : never;
+}[EventName] extends infer Result
+  ? Result
+  : never;
+
 export type EventPayloadOf<EventCreator extends (...args: never[]) => unknown> =
   Parameters<EventCreator> extends [infer Payload] ? Payload : never;
 
@@ -505,8 +542,12 @@ export const combineStates = <
       new Set(Object.values(tree).flatMap(Object.keys)),
     );
 
-    const makeEventCreator = (type: string) => (payload?: unknown) =>
-      payload === undefined ? { type } : { type, payload };
+    const makeEventCreator = (type: string) =>
+      Object.assign(
+        (payload?: unknown) =>
+          payload === undefined ? { type } : { type, payload },
+        { eventType: type },
+      );
     const eventCreatorsMap = Object.fromEntries(
       eventNames.map(type => [type, makeEventCreator(type)]),
     ) as EventCreatorsMap<Tree>;

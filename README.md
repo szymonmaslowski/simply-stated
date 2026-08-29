@@ -325,6 +325,14 @@ if (is(resultingState, state.Queued, state.Processing)) {
   // The .data property is available for Queued and Processing states
   console.info('Job already assigned. Details:', resultingState.data);
 }
+
+// It works with events too, comparing the event types
+// eventJobAssigned.type === workerMachine.event.jobAssigned.eventType
+if (is(eventJobAssigned, workerMachine.event.jobAssigned)) {
+  // It narrows the event type.
+  // The .payload property is available for the jobAssigned event
+  console.info('Assigning job:', eventJobAssigned.payload.id);
+}
 ```
 
 </details>
@@ -369,6 +377,10 @@ try {
 
 if (is(resultingState, state.Queued, state.Processing)) {
   console.info('Job already assigned. Details:', resultingState.data);
+}
+
+if (is(eventJobAssigned, workerMachine.event.jobAssigned)) {
+  console.info('Assigning job:', eventJobAssigned.payload.id);
 }
 ```
 

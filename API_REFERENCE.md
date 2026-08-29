@@ -43,6 +43,7 @@ import type { StateOf, EventOf, StateCreatorOf } from 'simply-stated';
   - [StateOf](#stateof)
   - [EventOf](#eventof)
   - [StateCreatorOf](#statecreatorof)
+  - [EventCreatorOf](#eventcreatorof)
 - [Compile-time rejections](#compile-time-rejections)
   - [UsageGuardError](#usageguarderror)
 
@@ -226,9 +227,9 @@ Produces [event](#event) object.
 - `payload` _\<any>_
 - Returns: [event](#event) object.
 
-Event creators build an [event object](#event). Creators of events that
-carry payload take that payload as an argument, while creators for events
-without payload take no argument.
+Event creators build an [event object](#event) and carry the `eventType`
+property. Creators of events that carry payload take that payload as an
+argument, while creators for events without payload take no argument.
 
 Events and the Event creators map are derived from every event key found in
 the [StateMachineTree](#statemachinetree),
@@ -241,6 +242,8 @@ event.reset();
 // → { type: 'reset' }
 event.jobAssigned({ id: '0', data: Buffer.from('data') });
 // → { type: 'jobAssigned', payload: { id: '0', data: Buffer<...> } }
+event.jobAssigned.eventType;
+// → 'jobAssigned'
 ```
 
 ## createMachine
@@ -531,16 +534,24 @@ const next = myMachine.transition(
 ### is
 
 A type guard, checking if supplied [state](#state) matches any of supplied
-[state creators](#state-creator).
+[state creators](#state-creator), or if supplied [event](#event) matches any of
+supplied [event creators](#event-creator).
 
-**is(state, ...stateCreators): boolean**
+**is(state, ...stateCreators): boolean**<br />
+**is(event, ...eventCreators): boolean**
 
 - `state` _\<[State](#state)>_ The state to check
 - `stateCreators` _\<[State creator](#state-creator)>_ One or more state creators to check against
-- Returns: _\<boolean>_ Whether the state was matched
+- `event` _\<[Event](#event)>_ The event to check
+- `eventCreators` _\<[Event creator](#event-creator)>_ One or more event creators to check against
+- Returns: _\<boolean>_ Whether the state or the event was matched
 
-It **narrows** the state union to the matched states. It's a handy alternative
-to manual state name checking, paying off when you compare against many states.
+It **narrows** the state union to the matched states, or the event union to the
+matched events. It's a handy alternative to manual state name / event type
+checking, paying off when you compare against many of them.
+
+States and events are never matched against each other — a state creator only
+matches a state, an event creator only matches an event.
 
 ```typescript
 import { is } from 'simply-stated';
@@ -549,6 +560,12 @@ import { is } from 'simply-stated';
 if (is(currentState, state.Queued, state.Processing)) {
   // narrowed — both Queued and Processing states' data is a Job with id property
   console.info(`Job ${currentState.data.id} already assigned.`);
+}
+
+// if (currentEvent.type === 'jobAssigned' || currentEvent.type === 'jobPicked') {
+if (is(currentEvent, event.jobAssigned, event.jobPicked)) {
+  // narrowed — both events carry a Job payload with an id property
+  console.info(`Job ${currentEvent.payload.id} in flight.`);
 }
 ```
 
@@ -674,6 +691,39 @@ const carriesJob = (
   currentState: StateOf<typeof state>,
   ...jobStateCreators: JobStateCreator[]
 ) => is(currentState, ...jobStateCreators);
+```
+
+### EventCreatorOf
+
+Extracts the EventCreator type — the entire union, or a subset.<br />
+Like the [EventOf](#eventof), but returning EventCreator type instead of an
+Event type.
+
+**EventCreatorOf\<EventCreatorsMap[, EventName]> = EventCreatorsUnion**
+
+- `EventCreatorsMap` _\<[Event creators map](#event-creators-map)>_ The type of
+  event creators map (`typeof machine.event`).
+- `EventName` _\<string>_ Optional. Narrows to the specified event(s).
+  **Default:** all events.
+- Returns: `EventCreator` _\<[Event creator](#event-creator)>_ The union of the
+  event creator types.
+
+```typescript
+import type { EventCreatorOf } from 'simply-stated';
+
+const { event } = workerMachine;
+
+type JobEventCreator = EventCreatorOf<
+  typeof event,
+  'jobAssigned' | 'jobPicked'
+>;
+// ((payload: Job) => { type: 'jobAssigned', payload: Job }) & { eventType: 'jobAssigned' }
+// | ((payload: Job) => { type: 'jobPicked', payload: Job }) & { eventType: 'jobPicked' }
+
+const carriesJob = (
+  currentEvent: EventOf<typeof event>,
+  ...jobEventCreators: JobEventCreator[]
+) => is(currentEvent, ...jobEventCreators);
 ```
 
 ## Compile-time rejections
