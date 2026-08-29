@@ -1,0 +1,51 @@
+{
+  "name": "simply-stated-diagram",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Extract state machine graphs from simply-stated sources",
+  "license": "MIT",
+  "author": "Szymon Masłowski",
+  "homepage": "https://github.com/szymonmaslowski/simply-stated#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/szymonmaslowski/simply-stated.git",
+    "directory": "simply-stated-diagram"
+  },
+  "bugs": {
+    "url": "https://github.com/szymonmaslowski/simply-stated/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "simply-stated-diagram": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "typescript": ">=5.7"
+  },
+  "devDependencies": {
+    "simply-stated": "workspace:*"
+  },
+  "dependencies": {
+    "mermaid": "^11.16.1"
+  }
+}
