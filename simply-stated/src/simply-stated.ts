@@ -19,20 +19,22 @@ export type UsageGuardError<M extends string> = {
 type StateDefinition<
   StateName extends string,
   Data extends NonNullable<unknown> | void = void,
+  HasData extends boolean = false,
 > = Tagged<
-  { stateName: StateName; withData: Data extends void ? false : true },
+  { stateName: StateName; withData: HasData },
   'StateDefinition',
   Data
 >;
 
-type AnyStateDefinition = StateDefinition<string, any>;
+type AnyStateDefinition = StateDefinition<string, any, boolean>;
 
 type StateDefinitionsFor<
   StateNames extends readonly string[],
   Data extends NonNullable<unknown> | void = void,
+  HasData extends boolean = false,
 > = {
   [SN in keyof StateNames]: StateNames[SN] extends string
-    ? StateDefinition<StateNames[SN], Data>
+    ? StateDefinition<StateNames[SN], Data, HasData>
     : never;
 };
 
@@ -40,29 +42,35 @@ type DefineStateTuple<StateNames extends readonly string[]> =
   StateDefinitionsFor<StateNames> & {
     withData<Data extends NonNullable<unknown>>(): StateDefinitionsFor<
       StateNames,
-      Data
+      Data,
+      true
     >;
   };
 
 type StateObject<
   StateName extends string,
   Data extends NonNullable<unknown> | void = void,
+  HasData extends boolean = false,
 > = Readonly<
-  Data extends void ? { name: StateName } : { name: StateName; data: Data }
+  HasData extends true ? { name: StateName; data: Data } : { name: StateName }
 >;
 
 type StateCreator<
   StateName extends string,
   Data extends NonNullable<unknown> | void,
-> = (Data extends void
-  ? () => StateObject<StateName>
-  : (data: Data) => StateObject<StateName, Data>) & {
+  HasData extends boolean,
+> = ((
+  ...args: HasData extends true ? [data: Data] : [data?: never]
+) => StateObject<StateName, Data, HasData>) & {
   stateName: StateName;
 };
 
-export type AnyStateCreator = StateCreator<string, any>;
+export type AnyState = StateObject<string, any, true> | StateObject<string>;
 
-export type AnyState = ReturnType<StateCreator<string, any>>;
+export type AnyStateCreator = {
+  (...args: any[]): AnyState;
+  stateName: string;
+};
 
 export type AnyMachine = Tagged<
   {
@@ -78,8 +86,16 @@ type StateCreatorsFromDefinitions<
   Definitions extends readonly AnyStateDefinition[],
 > = {
   [K in keyof Definitions]: Definitions[K] extends AnyStateDefinition
-    ? Definitions[K] extends StateDefinition<infer Name extends string, any>
-      ? StateCreator<Name, GetTagMetadata<Definitions[K], 'StateDefinition'>>
+    ? Definitions[K] extends StateDefinition<
+        infer Name extends string,
+        any,
+        infer HasData extends boolean
+      >
+      ? StateCreator<
+          Name,
+          GetTagMetadata<Definitions[K], 'StateDefinition'>,
+          HasData
+        >
       : never
     : never;
 };
@@ -99,7 +115,7 @@ export const is = <const StateCreators extends readonly AnyStateCreator[]>(
 const makeStateCreator = <Data extends NonNullable<unknown> | void>({
   stateName,
   withData,
-}: StateDefinition<string, Data>) => {
+}: StateDefinition<string, Data, boolean>) => {
   const stateCreator = withData
     ? (data: Data) => ({ name: stateName, data })
     : () => ({ name: stateName });
@@ -125,13 +141,14 @@ export const defineState = <
 
   const makeAllStateDefinitions = <
     Data extends NonNullable<unknown> | void = void,
+    HasData extends boolean = false,
   >(
     withData: boolean = false,
   ) =>
     stateNames.map(stateName => ({
       stateName,
       withData,
-    })) as StateDefinitionsFor<StateNames, Data>;
+    })) as StateDefinitionsFor<StateNames, Data, HasData>;
 
   const tuple = makeAllStateDefinitions() as DefineStateTuple<StateNames>;
   tuple.withData = () => makeAllStateDefinitions(true);
@@ -147,6 +164,8 @@ type StateCreatorsMap<StateCreators extends readonly AnyStateCreator[]> =
     [SC in StateCreators[number] as SC['stateName']]: SC;
   }>;
 
+export type DataOfStateCreator<SC extends AnyStateCreator> = Parameters<SC>[0];
+
 type EventHandler<
   StateCreators extends readonly AnyStateCreator[],
   SC extends AnyStateCreator | void = void,
@@ -154,7 +173,7 @@ type EventHandler<
   ? (...payload: any) => StateType<StateCreators>
   : SC extends AnyStateCreator
     ? (
-        data: ReturnType<SC> extends { data: infer D } ? D : undefined,
+        data: DataOfStateCreator<SC>,
         ...payload: any
       ) => StateType<StateCreators>
     : never;

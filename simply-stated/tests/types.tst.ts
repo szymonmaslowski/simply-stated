@@ -170,7 +170,7 @@ void (() => {
   event.failed(false);
 
   // 12. Void-data state creator called with data.
-  // @ts-expect-error Expected 0 arguments
+  // @ts-expect-error is not assignable to parameter of type 'undefined'
   state.Closed({});
 
   // 13. With-data state creator called without data.
@@ -344,4 +344,82 @@ test('onTransition receives the state and event unions of the machine', () => {
       },
     },
   );
+});
+
+// The generic-factory tests below guard the state creators staying resolved when
+// `Data` is still an unresolved type parameter: a conditional on `Data` inside
+// `StateCreator` used to defer the whole `StateCreatorsMap`, collapsing
+// `createMachine`'s `state` argument to an implicit `any`.
+test('a machine built inside a generic factory keeps its state creators typed', () => {
+  const makeMachine = <Data extends NonNullable<unknown>>() =>
+    combineStates(
+      defineState('Ready', 'Running').withData<Data>(),
+    ).createMachine(state => {
+      expect(state.Ready.stateName).type.toBe<'Ready'>();
+      expect(state.Running).type.toBeCallableWith({} as Data);
+      return {
+        Ready: {
+          start: previousData => {
+            expect(previousData).type.toBe<Data>();
+            return state.Running(previousData);
+          },
+        },
+        Running: {
+          stop: previousData => {
+            expect(previousData).type.toBe<Data>();
+            return state.Ready(previousData);
+          },
+        },
+      };
+    });
+
+  const machine = makeMachine<{ attempts: number }>();
+  expect<StateOf<typeof machine.state>['name']>().type.toBe<
+    'Ready' | 'Running'
+  >();
+  expect<StateOf<typeof machine.state, 'Ready'>['data']>().type.toBe<{
+    attempts: number;
+  }>();
+  expect(machine.state.Ready).type.toBeCallableWith({ attempts: 1 });
+  expect(machine.state.Ready).type.not.toBeCallableWith({ wrong: true });
+});
+
+test('a void-data machine built inside a generic factory keeps its state creators typed', () => {
+  const makeMachine = <Payload>() =>
+    combineStates(defineState('Idle', 'Busy')).createMachine(state => ({
+      Idle: {
+        start: (previousData, _payload: Payload) => {
+          expect(previousData).type.toBe<undefined>();
+          return state.Busy();
+        },
+      },
+      Busy: {
+        finish: () => state.Idle(),
+      },
+    }));
+
+  const machine = makeMachine<{ reason: string }>();
+  expect(machine.state.Idle).type.toBeCallableWith();
+  expect(machine.event.start).type.toBeCallableWith({ reason: 'retry' });
+  expect<StateOf<typeof machine.state, 'Busy'>>().type.toBe<{
+    readonly name: 'Busy';
+  }>();
+});
+
+test('a generic factory forwards its Data constraint to the state creators', () => {
+  const makeMachine = <Data extends { id: string }>() =>
+    combineStates(defineState('Ready').withData<Data>()).createMachine(
+      state => ({
+        Ready: {
+          touch: previousData => {
+            expect(previousData.id).type.toBe<string>();
+            return state.Ready(previousData);
+          },
+        },
+      }),
+    );
+
+  const machine = makeMachine<{ id: string; retries: number }>();
+  expect(machine.state.Ready).type.toBeCallableWith({ id: 'a', retries: 0 });
+  expect(machine.state.Ready).type.not.toBeCallableWith({ id: 'a' });
 });
