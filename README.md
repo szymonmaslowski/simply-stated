@@ -32,6 +32,8 @@ Simply Stated puts a huge emphasis on guarding the proper usage with clear type
 errors.
 See [compile-time rejections](./API_REFERENCE.md#compile-time-rejections).
 
+Requires **TypeScript >= 5.4**.
+
 Fast-forward to:
 
 - [API Walkthrough](#api-walkthrough)
