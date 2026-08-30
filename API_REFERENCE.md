@@ -1,11 +1,13 @@
 # Simply Stated API Reference
 
+Requires **TypeScript >= 5.4**.
+
+[Adapters](./simply-stated/src/adapters/README.md) are documented separately.
+
 ```typescript
 import { combineStates, defineState, forwardEvents, is } from 'simply-stated';
 import type { StateOf, EventOf, StateCreatorOf } from 'simply-stated';
 ```
-
-[Adapters](./simply-stated/src/adapters/README.md) are documented separately.
 
 ## Table of contents
 

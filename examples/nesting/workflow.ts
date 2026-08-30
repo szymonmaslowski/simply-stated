@@ -42,9 +42,10 @@ const _workflowMachine = combineStates(
         event: EventOf<typeof jobMachine.event>;
       },
     ) => {
-      if (!jobs[id]) return state.Working({ jobs });
+      const job = jobs[id];
+      if (!job) return state.Working({ jobs });
 
-      const nextJob = jobMachine.transition(jobs[id], event);
+      const nextJob = jobMachine.transition(job, event);
       const nextJobs = {
         ...jobs,
         [nextJob.data.id]: nextJob,
