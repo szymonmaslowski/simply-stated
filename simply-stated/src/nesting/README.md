@@ -18,7 +18,7 @@ See available [nesting examples](../../../examples/nesting/README.md).
 - `selector` points at the nested state inside outer state's `data`.
 
 Spread the whole map into a state's handler map, or pick individual handlers
-(`forwardEvents(...).on`) to wire one inner event to a differently-named outer
+(`forwardEvents(...).eventName`) to wire one inner event to a differently-named outer
 event.
 
 ```typescript

@@ -27,6 +27,8 @@ use Simply Stated to:
 
 > See [adapters](#adapters) for popular state management libraries.
 
+Alternatively, you can choose [vanilla runner](#vanilla-runner).
+
 **Strong type support** - strongest of its strong strengths. 🙃<br />
 Simply Stated puts a huge emphasis on guarding the proper usage with clear type
 errors.
@@ -40,6 +42,7 @@ Fast-forward to:
 - [API Reference](./API_REFERENCE.md)
 - [Nesting machines](#nesting-machines)
 - [Adapters](#adapters)
+- [Vanilla runner](#vanilla-runner)
 
 ## Quick look
 
@@ -419,6 +422,35 @@ See the [adapters docs](simply-stated/src/adapters/README.md).
   · [docs](simply-stated/src/adapters/zustand/README.md) ·
   [examples](examples/zustand/README.md)
 - **Pinia** — _(coming soon)_
+
+## Vanilla runner
+
+State management libraries are typical for frontend applications. If your use
+case is agent loops, job pipelines or backend workflows, and you don't wanna
+run the machine manually, use the Simply Stated Runner.
+
+It drives your state machine and handles side effects processing.
+
+```typescript
+import { createRunner } from 'simply-stated/runner';
+
+const runner = createRunner(machine, {
+  onComplete: (summary: string) => console.info(summary),
+  effects: async ({ complete, currentState, dispatch }) => {
+    if (currentState.name === 'Completed')
+      return complete(currentState.data.summary);
+    if (currentState.name !== 'Ready') return;
+
+    dispatch(machine.event.started());
+    dispatch(machine.event.finished(await doTheWork()));
+  },
+});
+
+const { api, result } = runner.start(machine.state.Ready());
+```
+
+See the [runner docs](simply-stated/src/runner/README.md) ·
+[examples](examples/runner/README.md).
 
 ## License
 

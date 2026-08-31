@@ -1,11 +1,4 @@
-import type { AnyMachine } from '../simply-stated';
-import type { Simplify } from '../type-utils';
-
-// Not `StateOf`: its tooltip-friendly tail stays deferred while `Machine` is
-// unresolved, and the adapters need an object type here.
-export type StateOfMachine<Machine extends AnyMachine> = Simplify<
-  ReturnType<Machine['state'][keyof Machine['state']]>
->;
+import type { AnyMachine, StateOfMachine } from '../simply-stated';
 
 export type DataOfMachine<Machine extends AnyMachine> = [
   StateOfMachine<Machine>,

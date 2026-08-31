@@ -3,6 +3,7 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
   entry: [
     'src/index.ts',
+    'src/runner/index.ts',
     'src/adapters/redux-toolkit/index.ts',
     'src/adapters/zustand/index.ts',
   ],

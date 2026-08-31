@@ -1,7 +1,10 @@
 import type { SliceSelectors } from '@reduxjs/toolkit';
 import { getAtPath, setAtPath, splitPath } from '../../utils';
-import type { AnyMachine, EventPayloadOf } from '../../simply-stated';
-import type { StateOfMachine } from '../shared';
+import type {
+  AnyMachine,
+  EventPayloadOf,
+  StateOfMachine,
+} from '../../simply-stated';
 import { rebindUserSelectors } from './shared';
 import type { GenericReducer, NestAt } from './shared';
 

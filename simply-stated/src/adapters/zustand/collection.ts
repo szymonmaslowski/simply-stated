@@ -1,4 +1,4 @@
-import type { AnyMachine } from '../../simply-stated';
+import type { AnyMachine, StateOfMachine } from '../../simply-stated';
 import type { SetAtPath } from '../../type-utils';
 import { getAtPath, setAtPath, splitPath } from '../../utils';
 import type {
@@ -8,12 +8,7 @@ import type {
   SliceInitializerWithPath,
   SliceInitializer,
 } from './shared';
-import type {
-  DataOfMachine,
-  EntityIdFor,
-  ModeFor,
-  StateOfMachine,
-} from '../shared';
+import type { DataOfMachine, EntityIdFor, ModeFor } from '../shared';
 
 type EntityIdType = number | string;
 

@@ -13,16 +13,12 @@ import type {
   AnyMachine,
   UsageGuardError,
   EventPayloadOf,
+  StateOfMachine,
 } from '../../simply-stated';
 import { getAtPath, setAtPath, splitPath } from '../../utils';
 import { rebindUserSelectors } from './shared';
 import type { GenericReducer, NestAt } from './shared';
-import type {
-  DataOfMachine,
-  EntityIdFor,
-  ModeFor,
-  StateOfMachine,
-} from '../shared';
+import type { DataOfMachine, EntityIdFor, ModeFor } from '../shared';
 
 const entityAdapterCrudFnNames = [
   'addOne',
