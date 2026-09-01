@@ -82,6 +82,12 @@ export type AnyMachine = Tagged<
   unknown
 >;
 
+// Not `StateOf`: its tooltip-friendly tail stays deferred while `Machine` is
+// unresolved, and the consumers need an object type here.
+export type StateOfMachine<Machine extends AnyMachine> = Simplify<
+  ReturnType<Machine['state'][keyof Machine['state']]>
+>;
+
 type StateCreatorsFromDefinitions<
   Definitions extends readonly AnyStateDefinition[],
 > = {

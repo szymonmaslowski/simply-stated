@@ -1,7 +1,6 @@
-import type { AnyMachine } from '../../simply-stated';
+import type { AnyMachine, StateOfMachine } from '../../simply-stated';
 import type { SetAtPath } from '../../type-utils';
 import { getAtPath, setAtPath, splitPath } from '../../utils';
-import type { StateOfMachine } from '../shared';
 import type {
   MachineActions,
   GuardPlacement,

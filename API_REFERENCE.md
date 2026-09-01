@@ -2,7 +2,8 @@
 
 Requires **TypeScript >= 5.4**.
 
-[Adapters](./simply-stated/src/adapters/README.md) are documented separately.
+The [adapters](./simply-stated/src/adapters/README.md) and the
+[runner](./simply-stated/src/runner/README.md) are documented separately.
 
 ```typescript
 import { combineStates, defineState, forwardEvents, is } from 'simply-stated';

@@ -45,6 +45,14 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./runner": {
+      "types": {
+        "import": "./dist/runner/index.d.ts",
+        "require": "./dist/runner/index.d.cts"
+      },
+      "import": "./dist/runner/index.js",
+      "require": "./dist/runner/index.cjs"
+    },
     "./redux-toolkit": {
       "types": {
         "import": "./dist/adapters/redux-toolkit/index.d.ts",
