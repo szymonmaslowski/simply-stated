@@ -1,6 +1,6 @@
 {
   "name": "simply-stated",
-  "version": "0.6.1",
+  "version": "0.7.0-beta.0",
   "description": "Strongly typed, declarative state machine modeling",
   "keywords": [
     "state-machine",
