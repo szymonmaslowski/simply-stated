@@ -6,6 +6,11 @@ name: Release
 # build + tests, commits + tags + pushes to main, creates a GitHub Release, and
 # publishes to npm — in one run.
 #
+# "npm dist-tag" decides what a plain `npm install simply-stated` gets: only
+# `latest` is resolved by default, so ship prereleases under `next` (or any
+# other tag) to keep them off every installer. A prerelease version under
+# `latest` is rejected.
+#
 # The package README is not committed: the "Build package README" step
 # generates it from the root README (see scripts/build-package-readme.mjs),
 # pinning links to the version being cut.
@@ -31,6 +36,15 @@ on:
         description: 'Explicit version override (semver, e.g. 1.2.3; blank = use bump)'
         required: false
         type: string
+      dist_tag:
+        description: 'npm dist-tag (latest is what a plain `npm install` resolves; use next/beta for prereleases)'
+        required: true
+        type: choice
+        options:
+          - latest
+          - next
+          - beta
+        default: latest
       dry_run:
         description: 'Dry run (skip push, publish and GitHub Release)'
         required: false
@@ -68,15 +82,25 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
           OVERRIDE: ${{ inputs.version }}
+          DIST_TAG: ${{ inputs.dist_tag }}
         run: |
+          PREID=()
           if [[ -n "$OVERRIDE" ]]; then
             ARG="$OVERRIDE"; SOURCE="explicit override"
           else
             ARG="$BUMP"; SOURCE="$BUMP bump"
+            # Name the prerelease after the tag it ships under: 0.6.2-next.0, not 0.6.2-0.
+            if [[ "$BUMP" == prerelease && "$DIST_TAG" != latest ]]; then
+              PREID=(--preid "$DIST_TAG")
+            fi
           fi
-          NEW=$(npm version "$ARG" --no-git-tag-version | sed 's/^v//')
+          NEW=$(npm version "$ARG" "${PREID[@]}" --no-git-tag-version | sed 's/^v//')
+          if [[ "$NEW" == *-* && "$DIST_TAG" == latest ]]; then
+            echo "::error::$NEW is a prerelease; publishing it as 'latest' would make it the default install. Pick a dist tag (e.g. next)."
+            exit 1
+          fi
           echo "version=$NEW" >> "$GITHUB_OUTPUT"
-          echo "### Releasing v$NEW ($SOURCE)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Releasing v$NEW ($SOURCE) under npm tag '$DIST_TAG'" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Ensure tag is free
         env:
@@ -100,14 +124,18 @@ jobs:
       - name: Publish to npm (dry run)
         if: ${{ inputs.dry_run }}
         working-directory: simply-stated
-        run: npm publish --dry-run
+        env:
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: npm publish --dry-run --tag "$DIST_TAG"
 
       - name: Publish to npm
         if: ${{ !inputs.dry_run }}
         working-directory: simply-stated
+        env:
+          DIST_TAG: ${{ inputs.dist_tag }}
         run: |
           npm install -g npm@latest # OIDC trusted publishing needs npm >= 11.5
-          npm publish --provenance --access public
+          npm publish --provenance --access public --tag "$DIST_TAG"
 
       - name: Commit & tag
         env:
@@ -129,15 +157,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           VERSION: ${{ steps.resolve.outputs.version }}
-        run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes
+        run: |
+          PRERELEASE=()
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE=(--prerelease)
+          fi
+          gh release create "v$VERSION" --title "v$VERSION" --generate-notes "${PRERELEASE[@]}"
 
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
         env:
           VERSION: ${{ steps.resolve.outputs.version }}
+          DIST_TAG: ${{ inputs.dist_tag }}
         run: |
           {
-            echo "### Dry run for v$VERSION"
+            echo "### Dry run for v$VERSION (npm tag '$DIST_TAG')"
             echo "Resolved, built, tested, publish dry-run, committed and tagged locally."
             echo "Skipped: real npm publish, push to main, GitHub Release."
           } >> "$GITHUB_STEP_SUMMARY"
